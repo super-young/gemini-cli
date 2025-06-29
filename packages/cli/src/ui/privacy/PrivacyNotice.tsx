@@ -22,9 +22,25 @@ const PrivacyNoticeText = ({
   config: Config;
   onExit: () => void;
 }) => {
-  const authType = config.getContentGeneratorConfig()?.authType;
+  const getDerivedAuthType = (): AuthType | undefined => {
+    if (config.llmProvider === 'gemini') {
+      // Currently, no direct way to distinguish USE_VERTEX_AI from USE_GEMINI via config.llmProvider alone.
+      // Defaulting to USE_GEMINI. If Vertex has a different privacy notice,
+      // this logic or Config would need to be enhanced.
+      return AuthType.USE_GEMINI;
+    }
+    if (config.llmProvider === 'openrouter') {
+      return AuthType.USE_OPENROUTER;
+    }
+    // LOGIN_WITH_GOOGLE_PERSONAL is not typically determined by llmProvider in this context.
+    // It was previously part of ContentGeneratorConfig.
+    // For now, other providers or undefined llmProvider will result in `undefined`.
+    return undefined;
+  };
 
-  switch (authType) {
+  const currentAuthType: AuthType | undefined = getDerivedAuthType();
+
+  switch (currentAuthType) {
     case AuthType.USE_GEMINI:
       return <GeminiPrivacyNotice onExit={onExit} />;
     case AuthType.USE_VERTEX_AI:

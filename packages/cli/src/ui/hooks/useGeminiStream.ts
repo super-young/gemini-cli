@@ -24,6 +24,7 @@ import {
   ThoughtSummary,
   UnauthorizedError,
   UserPromptEvent,
+  AuthType, // Ensuring AuthType is explicitly in this import block
 } from '@google/gemini-cli-core';
 import { type Part, type PartListUnion } from '@google/genai';
 import {
@@ -404,7 +405,9 @@ export const useGeminiStream = (
           type: MessageType.ERROR,
           text: parseAndFormatApiError(
             eventValue.error,
-            config.getContentGeneratorConfig().authType,
+            config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+              : config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+              : undefined,
           ),
         },
         userMessageTimestamp,
@@ -548,7 +551,9 @@ export const useGeminiStream = (
               type: MessageType.ERROR,
               text: parseAndFormatApiError(
                 getErrorMessage(error) || 'Unknown error',
-                config.getContentGeneratorConfig().authType,
+                config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+                  : config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+                  : undefined,
               ),
             },
             userMessageTimestamp,

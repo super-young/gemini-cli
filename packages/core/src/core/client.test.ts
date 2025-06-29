@@ -282,9 +282,8 @@ describe('Gemini Client (client.ts)', () => {
       const generationConfig = { temperature: 0.5 };
       const abortSignal = new AbortController().signal;
 
-      // Mock countTokens
+      // countTokens is no longer part of ContentGenerator
       const mockGenerator: Partial<ContentGenerator> = {
-        countTokens: vi.fn().mockResolvedValue({ totalTokens: 1 }),
         generateContent: mockGenerateContentFn,
       };
       client['contentGenerator'] = mockGenerator as ContentGenerator;
@@ -311,9 +310,8 @@ describe('Gemini Client (client.ts)', () => {
       const schema = { type: 'string' };
       const abortSignal = new AbortController().signal;
 
-      // Mock countTokens
+      // countTokens is no longer part of ContentGenerator
       const mockGenerator: Partial<ContentGenerator> = {
-        countTokens: vi.fn().mockResolvedValue({ totalTokens: 1 }),
         generateContent: mockGenerateContentFn,
       };
       client['contentGenerator'] = mockGenerator as ContentGenerator;
@@ -395,9 +393,9 @@ describe('Gemini Client (client.ts)', () => {
       };
       client['chat'] = mockChat as GeminiChat;
 
-      const mockGenerator: Partial<ContentGenerator> = {
-        countTokens: vi.fn().mockResolvedValue({ totalTokens: 0 }),
-      };
+      // countTokens is no longer part of ContentGenerator
+      // If other ContentGenerator methods were needed for this mock, they'd be added here.
+      const mockGenerator: Partial<ContentGenerator> = {};
       client['contentGenerator'] = mockGenerator as ContentGenerator;
 
       // Act

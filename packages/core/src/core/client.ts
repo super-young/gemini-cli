@@ -34,11 +34,12 @@ import { tokenLimit } from './tokenLimits.js';
 import {
   ContentGenerator,
   createContentGenerator,
+  ContentGeneratorConfig, // Uncommented or ensure it's imported
+  AuthType,
 } from './contentGenerator.js';
-// import { ContentGeneratorConfig } from './contentGenerator.js'; // Type not directly used in Client constructor path
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
-import { AuthType } from './contentGenerator.js';
+import { SendMessageParams, ResponseMessage } from '../services/llm/llm_service.js'; // Corrected path
 
 function isThinkingSupported(model: string) {
   if (model.startsWith('gemini-2.5')) return true;
@@ -297,30 +298,45 @@ export class GeminiClient {
         // and that these params can convey schema/responseMimeType if the underlying LLMService supports it.
         // This might require adding these to SendMessageParams or specific LLMService handling.
         // For now, assuming generateContent can still handle @google/genai's GenerateContentParameters
-        // if the underlying service is Gemini. This is a temporary inconsistency.
-        const serviceSpecificParams: GenerateContentParameters = {
-            model, // This should be the specific model for this call, not necessarily config.model
-            generationConfig: { // Renamed from 'config' in GenerateContentParameters
-              ...requestConfig,
-              systemInstruction,
-              responseSchema: schema,
-              responseMimeType: 'application/json',
-            },
-            contents,
+        // Adapt to SendMessageParams
+        // The `model` parameter from generateJson is not directly part of SendMessageParams.
+        // It's assumed the ContentGenerator's LLMService is already configured with a model,
+        // or the model is specified within params.config if the LLMService supports it.
+        // For now, the `model` argument to generateJson will be effectively ignored here
+        // unless SendMessageParams.config can carry it and the LLMService uses it.
+        const sendMessageParams: SendMessageParams = {
+          // HACK: Casting Content[] to (string | Part)[] - this relies on underlying GeminiLLMService
+          // being able to correctly interpret this if it receives it.
+          // A proper mapping from Content[] to string|Part|(string|Part)[] is needed if this hack fails.
+          // For example, message: contents.flatMap(c => c.parts.map(p => p.text || '')) if only text parts.
+          message: contents as (string | Part)[],
+          config: {
+            ...requestConfig, // contains abortSignal, temperature, topP from this.generateContentConfig and config arg
+            // systemInstruction should be part of the config for SendMessageParams
+            // However, @google/genai's GenerateContentConfig doesn't have systemInstruction.
+            // System instructions are usually set when the model/chat is initialized.
+            // This is a point of mismatch if systemInstruction needs to be per-call here.
+            // For now, assuming systemInstruction is handled by the chat session or model setup.
+            // If GenerateContentConfig used by LLMService can take it, it would be:
+            // ...systemInstruction, // This is not standard in GenerateContentConfig
+            responseSchema: schema, // This is valid for @google/genai GenerateContentConfig
+            responseMimeType: 'application/json', // Valid for @google/genai GenerateContentConfig
+          },
         };
-        return this.getContentGenerator().generateContent(
-          // This needs to be properly cast or mapped to SendMessageParams
-          // if ContentGenerator strictly expects that.
-          // For now, let's assume it's compatible enough for Gemini path.
-          serviceSpecificParams as any // Cast to any to bridge the type gap temporarily
-        );
+        // TODO: Re-evaluate how `systemInstruction` and `model` are passed to the LLMService
+        // as `SendMessageParams` and its `config: GenerateContentConfig` might not fully support them per-call.
+        return this.getContentGenerator().generateContent(sendMessageParams);
       }
 
-      // const result = await retryWithBackoff(apiCall, { // Old result type
-      const result: GenerateContentResponse | ResponseMessage = await retryWithBackoff(apiCall, { // New union type
+      const result: ResponseMessage | GenerateContentResponse = await retryWithBackoff(apiCall, {
         onPersistent429: async (authType?: string) =>
           await this.handleFlashFallback(authType),
-        authType: (this.config.contentGeneratorConfig as ContentGeneratorConfig)?.authType, // Use the stored config
+        // Determine AuthType based on config's llmProvider.
+        // Assuming VertexAI is not used if llmProvider is 'gemini' without specific Vertex config,
+        // which aligns with Config not having an explicit getVertexAI().
+        authType: this.config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+                  : this.config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+                  : undefined,
       });
 
       // Adapt to potentially different response structures
@@ -405,22 +421,27 @@ export class GeminiClient {
       };
 
       const apiCall = () => {
-        // Similar to generateJson, adapt parameters for ContentGenerator
-        const serviceSpecificParams: GenerateContentParameters = {
-            model: modelToUse,
-            generationConfig: requestConfig, // Renamed from 'config'
-            contents,
+        // Similar to generateJson, adapt parameters for ContentGenerator / SendMessageParams
+        // The model (`modelToUse`) is assumed to be handled by the ContentGenerator's LLMService configuration.
+        // SystemInstruction is also assumed to be part of the model/chat setup or within requestConfig if supported.
+        const sendMessageParams: SendMessageParams = {
+          // HACK: Casting Content[] to (string | Part)[] - see note in generateJson
+          message: contents as (string | Part)[],
+          config: {
+            ...requestConfig, // contains abortSignal, temperature, topP, and potentially systemInstruction
+          },
         };
-        return this.getContentGenerator().generateContent(
-          serviceSpecificParams as any // Cast to any to bridge the type gap temporarily
-        );
+        // TODO: Re-evaluate how `systemInstruction` and `model` are passed.
+        return this.getContentGenerator().generateContent(sendMessageParams);
       }
 
-      // const result = await retryWithBackoff(apiCall, { // Old
-      const result: GenerateContentResponse | ResponseMessage = await retryWithBackoff(apiCall, { // New
+      const result: ResponseMessage | GenerateContentResponse = await retryWithBackoff(apiCall, {
         onPersistent429: async (authType?: string) =>
           await this.handleFlashFallback(authType),
-        authType: (this.config.contentGeneratorConfig as ContentGeneratorConfig)?.authType, // Use the stored config
+        // Determine AuthType based on config's llmProvider.
+        authType: this.config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+                  : this.config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+                  : undefined,
       });
       // If ContentGenerator returns ResponseMessage, and this function needs to return
       // GenerateContentResponse (from @google/genai), then a mapping is needed.
@@ -463,7 +484,9 @@ export class GeminiClient {
     const embedModelParams: EmbedContentParameters = {
       model: this.embeddingModel, // This assumes embeddingModel is Gemini-specific
       // For OpenRouter, a different embedding model might be needed, or it might use its own.
-      content: { role: 'user', parts: texts.map(text => ({text}))}, // Adapt to EmbedContentRequest
+      // EmbedContentParameters expects contents: Content[]
+      // Each text string needs to be mapped to a Content object.
+      contents: texts.map(text => ({ role: 'user', parts: [{text}] })),
     };
 
     const embedContentResponse = await (this.getContentGenerator() as any).embedContent(embedModelParams);
@@ -571,7 +594,8 @@ export class GeminiClient {
       },
       {
         role: 'model',
-        parts: [{ text: response.text }],
+        // ResponseMessage has a text() method, not a direct text property.
+        parts: [{ text: response.text ? response.text() : '' }],
       },
     ];
     this.chat = await this.startChat(newHistory);

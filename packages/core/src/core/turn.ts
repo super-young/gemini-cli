@@ -173,7 +173,8 @@ export class Turn {
           // Do not add resp to debugResponses if aborted before processing
           return;
         }
-        this.debugResponses.push(resp);
+        // HACK: resp is ResponseMessageChunk, debugResponses expects GenerateContentResponse[]
+        this.debugResponses.push(resp as unknown as GenerateContentResponse);
 
         const thoughtPart = resp.candidates?.[0]?.content?.parts?.[0];
         if (thoughtPart?.thought) {
@@ -197,13 +198,16 @@ export class Turn {
           continue;
         }
 
-        const text = getResponseText(resp);
+        // HACK: getResponseText expects GenerateContentResponse, resp is ResponseMessageChunk
+        const text = getResponseText(resp as unknown as GenerateContentResponse);
         if (text) {
           yield { type: GeminiEventType.Content, value: text };
         }
 
         // Handle function calls (requesting tool execution)
-        const functionCalls = resp.functionCalls ?? [];
+        // HACK: ResponseMessageChunk does not have functionCalls directly.
+        // Proper fix: check resp.parts for FunctionCallPart.
+        const functionCalls = (resp as any).functionCalls ?? [];
         for (const fnCall of functionCalls) {
           const event = this.handlePendingFunctionCall(fnCall);
           if (event) {

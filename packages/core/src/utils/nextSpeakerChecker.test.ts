@@ -15,8 +15,12 @@ import { GeminiChat } from '../core/geminiChat.js';
 vi.mock('../core/client.js');
 vi.mock('../config/config.js');
 
+import { ContentGenerator } from '../core/contentGenerator.js'; // Import ContentGenerator
+
 // Define mocks for GoogleGenAI and Models instances that will be used across tests
-const mockModelsInstance = {
+// This mockModelsInstance is for the *old* @google/genai Models type,
+// which GeminiChat constructor used to take. We'll replace its usage for GeminiChat.
+const mockOldModelsInstance = {
   generateContent: vi.fn(),
   generateContentStream: vi.fn(),
   countTokens: vi.fn(),
@@ -24,9 +28,16 @@ const mockModelsInstance = {
   batchEmbedContents: vi.fn(),
 } as unknown as Models;
 
+// New mock for the ContentGenerator interface
+const mockContentGeneratorForChat = {
+  generateContent: vi.fn(),
+  generateContentStream: vi.fn(),
+} as unknown as ContentGenerator;
+
+
 const mockGoogleGenAIInstance = {
-  getGenerativeModel: vi.fn().mockReturnValue(mockModelsInstance),
-  // Add other methods of GoogleGenAI if they are directly used by GeminiChat constructor or its methods
+  // getGenerativeModel is less relevant now if GeminiChat takes ContentGenerator directly
+  getGenerativeModel: vi.fn().mockReturnValue(mockOldModelsInstance),
 } as unknown as GoogleGenAI;
 
 vi.mock('@google/genai', async () => {
@@ -34,44 +45,45 @@ vi.mock('@google/genai', async () => {
     await vi.importActual<typeof import('@google/genai')>('@google/genai');
   return {
     ...actualGenAI,
-    GoogleGenAI: vi.fn(() => mockGoogleGenAIInstance), // Mock constructor to return the predefined instance
-    // If Models is instantiated directly in GeminiChat, mock its constructor too
-    // For now, assuming Models instance is obtained via getGenerativeModel
+    GoogleGenAI: vi.fn(() => mockGoogleGenAIInstance),
   };
 });
 
 describe('checkNextSpeaker', () => {
   let chatInstance: GeminiChat;
   let mockGeminiClient: GeminiClient;
-  let MockConfig: Mock;
+  let mockConfigObject: Config; // Use actual Config type for clarity
   const abortSignal = new AbortController().signal;
 
   beforeEach(() => {
-    MockConfig = vi.mocked(Config);
-    const mockConfigInstance = new MockConfig(
-      'test-api-key',
-      'gemini-pro',
-      false,
-      '.',
-      false,
-      undefined,
-      false,
-      undefined,
-      undefined,
-      undefined,
-    );
+    // Create a more complete mock for Config, similar to other tests
+    mockConfigObject = {
+      // GeminiChat uses config.getModel(), config.getVertexAI(), config.llmProvider
+      getModel: vi.fn().mockReturnValue('gemini-pro'),
+      getVertexAI: vi.fn().mockReturnValue(false),
+      llmProvider: 'gemini',
+      // Add other properties/methods if GeminiChat's constructor or methods need them
+      // For instance, if retryWithBackoff's authType derivation is complex:
+      // getAuthType: vi.fn().mockReturnValue(AuthType.USE_GEMINI) // Or similar
+      getSessionId: () => 'test-session-id-nextspeaker',
+      getTelemetryLogPromptsEnabled: () => true,
+      getUsageStatisticsEnabled: () => true,
+      getDebugMode: () => false,
+      // Mock any other methods of Config that GeminiChat might use directly or indirectly
+    } as unknown as Config;
 
-    mockGeminiClient = new GeminiClient(mockConfigInstance);
 
-    // Reset mocks before each test to ensure test isolation
-    vi.mocked(mockModelsInstance.generateContent).mockReset();
-    vi.mocked(mockModelsInstance.generateContentStream).mockReset();
+    mockGeminiClient = new GeminiClient(mockConfigObject); // GeminiClient needs a Config instance
 
-    // GeminiChat will receive the mocked instances via the mocked GoogleGenAI constructor
+    // Reset mocks for the new ContentGenerator mock
+    vi.mocked(mockContentGeneratorForChat.generateContent).mockReset();
+    vi.mocked(mockContentGeneratorForChat.generateContentStream).mockReset();
+
+    // Instantiate GeminiChat with the new mockContentGeneratorForChat
     chatInstance = new GeminiChat(
-      mockConfigInstance,
-      mockModelsInstance, // This is the instance returned by mockGoogleGenAIInstance.getGenerativeModel
-      {},
+      mockConfigObject, // Pass the mock Config instance
+      mockContentGeneratorForChat, // Pass the ContentGenerator mock
+      {}, // empty GenerateContentConfig
       [], // initial history
     );
 

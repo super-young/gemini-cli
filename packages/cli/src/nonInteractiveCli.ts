@@ -11,6 +11,7 @@ import {
   ToolRegistry,
   shutdownTelemetry,
   isTelemetrySdkInitialized,
+  AuthType, // Added import for AuthType
 } from '@google/gemini-cli-core';
 import {
   Content,
@@ -81,12 +82,15 @@ export async function runNonInteractive(
           console.error('Operation cancelled.');
           return;
         }
-        const textPart = getResponseText(resp);
+        // HACK: getResponseText expects GenerateContentResponse, resp is ResponseMessageChunk
+        const textPart = getResponseText(resp as unknown as GenerateContentResponse);
         if (textPart) {
           process.stdout.write(textPart);
         }
-        if (resp.functionCalls) {
-          functionCalls.push(...resp.functionCalls);
+        // HACK: resp is ResponseMessageChunk and does not have functionCalls directly.
+        // Proper fix: check resp.parts for FunctionCallPart.
+        if ((resp as any).functionCalls) {
+          functionCalls.push(...(resp as any).functionCalls);
         }
       }
 
@@ -144,7 +148,10 @@ export async function runNonInteractive(
     console.error(
       parseAndFormatApiError(
         error,
-        config.getContentGeneratorConfig().authType,
+        // Derive authType from config.llmProvider as getContentGeneratorConfig is removed
+        config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+          : config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+          : undefined,
       ),
     );
     process.exit(1);

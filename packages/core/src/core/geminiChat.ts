@@ -29,6 +29,7 @@ import {
   getStructuredResponse,
   getStructuredResponseFromParts,
 } from '../utils/generateContentResponseUtilities.js';
+import { ResponseMessage, ResponseMessageChunk } from '../services/llm/llm_service.js'; // Added
 import {
   ApiErrorEvent,
   ApiRequestEvent,
@@ -248,7 +249,7 @@ export class GeminiChat {
    */
   async sendMessage(
     params: SendMessageParameters,
-  ): Promise<GenerateContentResponse> {
+  ): Promise<ResponseMessage> { // Changed return type
     await this.sendPromise;
     const userContent = createUserContent(params.message);
     const requestContents = this.getHistory(true).concat(userContent);
@@ -256,15 +257,19 @@ export class GeminiChat {
     this._logApiRequest(requestContents, this.config.getModel());
 
     const startTime = Date.now();
-    let response: GenerateContentResponse;
+    let response: ResponseMessage; // Changed from GenerateContentResponse
 
     try {
-      const apiCall = () =>
-        this.contentGenerator.generateContent({
-          model: this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL,
-          contents: requestContents,
+      const apiCall = () => {
+        // Construct SendMessageParams
+        // Model is now part of the ContentGenerator's configuration (via LLMService)
+        // SystemInstruction (if any) is part of this.generationConfig
+        const sendMessageParams: SendMessageParameters = { // Corrected type here
+          message: requestContents.flatMap(c => c.parts || []), // Ensure parts is not undefined
           config: { ...this.generationConfig, ...params.config },
-        });
+        };
+        return this.contentGenerator.generateContent(sendMessageParams);
+      }
 
       response = await retryWithBackoff(apiCall, {
         shouldRetry: (error: Error) => {
@@ -276,13 +281,20 @@ export class GeminiChat {
         },
         onPersistent429: async (authType?: string) =>
           await this.handleFlashFallback(authType),
-        authType: this.config.getContentGeneratorConfig()?.authType,
+        // Determine AuthType based on config's llmProvider.
+        // Assuming VertexAI is not used if llmProvider is 'gemini' without specific Vertex config.
+        authType: this.config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+                  : this.config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+                  : undefined,
       });
       const durationMs = Date.now() - startTime;
       await this._logApiResponse(
         durationMs,
-        response.usageMetadata,
-        getStructuredResponse(response),
+        // Ensure undefined is passed if usageMetadata is falsy, then cast.
+        (response.usageMetadata || undefined) as GenerateContentResponseUsageMetadata | undefined,
+        // HACK: getStructuredResponse expects GenerateContentResponse.
+        // ResponseMessage needs to be adapted or getStructuredResponse needs to be updated.
+        getStructuredResponse(response as unknown as GenerateContentResponse),
       );
 
       this.sendPromise = (async () => {
@@ -342,7 +354,7 @@ export class GeminiChat {
    */
   async sendMessageStream(
     params: SendMessageParameters,
-  ): Promise<AsyncGenerator<GenerateContentResponse>> {
+  ): Promise<AsyncGenerator<ResponseMessageChunk>> { // Changed return type
     await this.sendPromise;
     const userContent = createUserContent(params.message);
     const requestContents = this.getHistory(true).concat(userContent);
@@ -351,12 +363,15 @@ export class GeminiChat {
     const startTime = Date.now();
 
     try {
-      const apiCall = () =>
-        this.contentGenerator.generateContentStream({
-          model: this.config.getModel(),
-          contents: requestContents,
+      const apiCall = () => {
+        // Construct SendMessageParams
+        // Model is now part of the ContentGenerator's configuration (via LLMService)
+        const sendMessageParams: SendMessageParameters = { // Corrected type here
+          message: requestContents.flatMap(c => c.parts || []), // Ensure parts is not undefined
           config: { ...this.generationConfig, ...params.config },
-        });
+        };
+        return this.contentGenerator.generateContentStream(sendMessageParams);
+      }
 
       // Note: Retrying streams can be complex. If generateContentStream itself doesn't handle retries
       // for transient issues internally before yielding the async generator, this retry will re-initiate
@@ -373,7 +388,10 @@ export class GeminiChat {
         },
         onPersistent429: async (authType?: string) =>
           await this.handleFlashFallback(authType),
-        authType: this.config.getContentGeneratorConfig()?.authType,
+        // Determine AuthType based on config's llmProvider.
+        authType: this.config.llmProvider === 'gemini' ? AuthType.USE_GEMINI
+                  : this.config.llmProvider === 'openrouter' ? AuthType.USE_OPENROUTER
+                  : undefined,
       });
 
       // Resolve the internal tracking of send completion promise - `sendPromise`
@@ -449,30 +467,42 @@ export class GeminiChat {
   }
 
   getFinalUsageMetadata(
-    chunks: GenerateContentResponse[],
+    // HACK: Cast ResponseMessageChunk[] to GenerateContentResponse[] for now.
+    // This utility needs to be updated if ResponseMessageChunk.usageMetadata is different.
+    // ResponseMessageChunk has `usageMetadata?: SDKUsageMetadata | unknown;`
+    // GenerateContentResponse has `usageMetadata?: GenerateContentResponseUsageMetadata;`
+    // SDKUsageMetadata is { promptTokenCount, candidatesTokenCount, totalTokenCount }
+    // GenerateContentResponseUsageMetadata is { promptTokenCount, candidatesTokenCount, totalTokenCount, cachedContentTokenCount }
+    // They are similar but not identical. This might lead to loss of `cachedContentTokenCount`.
+    chunks: ResponseMessageChunk[],
   ): GenerateContentResponseUsageMetadata | undefined {
     const lastChunkWithMetadata = chunks
       .slice()
       .reverse()
       .find((chunk) => chunk.usageMetadata);
 
-    return lastChunkWithMetadata?.usageMetadata;
+    return lastChunkWithMetadata?.usageMetadata as GenerateContentResponseUsageMetadata | undefined;
   }
 
   private async *processStreamResponse(
-    streamResponse: AsyncGenerator<GenerateContentResponse>,
+    streamResponse: AsyncGenerator<ResponseMessageChunk>, // Changed type
     inputContent: Content,
     startTime: number,
   ) {
-    const outputContent: Content[] = [];
-    const chunks: GenerateContentResponse[] = [];
+    const outputContent: Content[] = []; // Still collect Content for history
+    const chunks: ResponseMessageChunk[] = []; // Store ResponseMessageChunk
     let errorOccurred = false;
 
     try {
-      for await (const chunk of streamResponse) {
-        if (isValidResponse(chunk)) {
+      for await (const chunk of streamResponse) { // chunk is ResponseMessageChunk
+        // TODO: Adapt isValidResponse for ResponseMessageChunk or create isValidResponseChunk
+        // ResponseMessageChunk has: text(), parts, candidates, usageMetadata, automaticFunctionCallingHistory
+        // isValidResponse checks chunk.candidates and chunk.candidates[0].content.parts
+        // This structure is similar enough that it might work with a cast for now.
+        if (isValidResponse(chunk as unknown as GenerateContentResponse)) { // HACK: Cast for now
           chunks.push(chunk);
-          const content = chunk.candidates?.[0]?.content;
+          // Extract content for history (still Content based on Gemini SDK types)
+          const content = chunk.candidates?.[0]?.content; // Assuming candidates[0].content is still the way
           if (content !== undefined) {
             if (this.isThoughtContent(content)) {
               yield chunk;

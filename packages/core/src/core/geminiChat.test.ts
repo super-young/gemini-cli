@@ -15,6 +15,7 @@ import {
 import { GeminiChat } from './geminiChat.js';
 import { Config } from '../config/config.js';
 import { setSimulate429 } from '../utils/testUtils.js';
+import { ContentGenerator } from './contentGenerator.js'; // Corrected import path
 
 // Mocks
 const mockModelsModule = {
@@ -23,24 +24,38 @@ const mockModelsModule = {
   countTokens: vi.fn(),
   embedContent: vi.fn(),
   batchEmbedContents: vi.fn(),
-} as unknown as Models;
+} as unknown as Models; // This mock is for the old @google/genai Models type
+
+// New mock for ContentGenerator
+const mockContentGenerator = {
+  generateContent: vi.fn(),
+  generateContentStream: vi.fn(),
+  // countTokens and embedContent are not part of ContentGenerator interface
+} as unknown as ContentGenerator; // Cast to ContentGenerator
 
 describe('GeminiChat', () => {
   let chat: GeminiChat;
   let mockConfig: Config;
-  const config: GenerateContentConfig = {};
+  const generateContentConfigForChat: GenerateContentConfig = {}; // Renamed for clarity
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset mocks for the new generator
+    vi.mocked(mockContentGenerator.generateContent).mockReset();
+    vi.mocked(mockContentGenerator.generateContentStream).mockReset();
+
     mockConfig = {
       getSessionId: () => 'test-session-id',
       getTelemetryLogPromptsEnabled: () => true,
       getUsageStatisticsEnabled: () => true,
       getDebugMode: () => false,
-      getContentGeneratorConfig: () => ({
-        authType: 'oauth-personal',
-        model: 'test-model',
-      }),
+      // getContentGeneratorConfig is likely deprecated or changed in Config
+      // It was used by GeminiChat to get authType for retryWithBackoff.
+      // GeminiChat now gets model via config.getModel() and authType might be handled differently.
+      // Let's mock getVertexAI for the authType derivation in GeminiChat.
+      getVertexAI: vi.fn().mockReturnValue(false), // To make authType GEMINI_API_KEY by default
+      llmProvider: 'gemini', // Assume gemini provider for these tests
+      // getModel will be called by GeminiChat to determine model for requests
       getModel: vi.fn().mockReturnValue('gemini-pro'),
       setModel: vi.fn(),
       flashFallbackHandler: undefined,
@@ -49,7 +64,8 @@ describe('GeminiChat', () => {
     // Disable 429 simulation for tests
     setSimulate429(false);
     // Reset history for each test by creating a new instance
-    chat = new GeminiChat(mockConfig, mockModelsModule, config, []);
+    // Pass the new mockContentGenerator
+    chat = new GeminiChat(mockConfig, mockContentGenerator, generateContentConfigForChat, []);
   });
 
   afterEach(() => {
@@ -77,42 +93,33 @@ describe('GeminiChat', () => {
 
       await chat.sendMessage({ message: 'hello' });
 
-      expect(mockModelsModule.generateContent).toHaveBeenCalledWith({
-        model: 'gemini-pro',
-        contents: [{ role: 'user', parts: [{ text: 'hello' }] }],
-        config: {},
+      // mockConfig.getModel() returns 'gemini-pro', this is used by GeminiChat internally
+      // but not passed directly in SendMessageParams to contentGenerator.
+      expect(mockContentGenerator.generateContent).toHaveBeenCalledWith({
+        // `model` is not a top-level field in SendMessageParams
+        message: [{ text: 'hello' }], // History is empty, so requestContents.flatMap(c => c.parts) gives parts of userContent
+        config: generateContentConfigForChat, // Which is {} in this test
       });
     });
   });
 
   describe('sendMessageStream', () => {
     it('should call generateContentStream with the correct parameters', async () => {
-      const response = (async function* () {
-        yield {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: 'response' }],
-                role: 'model',
-              },
-              finishReason: 'STOP',
-              index: 0,
-              safetyRatings: [],
-            },
-          ],
-          text: () => 'response',
-        } as unknown as GenerateContentResponse;
+      const mockStream = (async function* () {
+        // Yield a mock ResponseMessageChunk or something compatible
+        yield { text: () => 'response chunk' } as any;
       })();
-      vi.mocked(mockModelsModule.generateContentStream).mockResolvedValue(
-        response,
+      // Mock the new contentGenerator's method
+      vi.mocked(mockContentGenerator.generateContentStream).mockResolvedValue(
+        mockStream as any, // Cast since ResponseMessageChunk vs GenerateContentResponse stream
       );
 
       await chat.sendMessageStream({ message: 'hello' });
 
-      expect(mockModelsModule.generateContentStream).toHaveBeenCalledWith({
-        model: 'gemini-pro',
-        contents: [{ role: 'user', parts: [{ text: 'hello' }] }],
-        config: {},
+      expect(mockContentGenerator.generateContentStream).toHaveBeenCalledWith({
+        // `model` is not a top-level field in SendMessageParams
+        message: [{ text: 'hello' }], // History is empty
+        config: generateContentConfigForChat, // Which is {} in this test
       });
     });
   });
@@ -205,7 +212,7 @@ describe('GeminiChat', () => {
       chat.recordHistory(userInput, newModelOutput); // userInput here is for the *next* turn, but history is already primed
 
       // Reset and set up a more realistic scenario for merging with existing history
-      chat = new GeminiChat(mockConfig, mockModelsModule, config, []);
+      chat = new GeminiChat(mockConfig, mockContentGenerator, generateContentConfigForChat, []); // Corrected
       const firstUserInput: Content = {
         role: 'user',
         parts: [{ text: 'First user input' }],
@@ -248,7 +255,7 @@ describe('GeminiChat', () => {
         role: 'model',
         parts: [{ text: 'Initial model answer.' }],
       };
-      chat = new GeminiChat(mockConfig, mockModelsModule, config, [
+      chat = new GeminiChat(mockConfig, mockContentGenerator, generateContentConfigForChat, [ // Corrected
         initialUser,
         initialModel,
       ]);
