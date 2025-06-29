@@ -84,6 +84,7 @@ describe('loggers', () => {
         getQuestion: () => 'test-question',
         getTargetDir: () => 'target-dir',
         getProxy: () => 'http://test.proxy.com:8080',
+        llmProvider: 'gemini', // Add llmProvider for StartSessionEvent
       } as unknown as Config;
 
       const startSessionEvent = new StartSessionEvent(mockConfig);
@@ -100,8 +101,8 @@ describe('loggers', () => {
           sandbox_enabled: true,
           core_tools_enabled: 'ls,read-file',
           approval_mode: 'default',
-          api_key_enabled: true,
-          vertex_ai_enabled: true,
+          api_key_enabled: true, // Because llmProvider is 'gemini'
+          vertex_ai_enabled: false, // Changed expectation based on new logic
           log_user_prompts_enabled: true,
           file_filtering_respect_git_ignore: true,
           debug_mode: true,

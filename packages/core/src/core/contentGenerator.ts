@@ -5,22 +5,15 @@
  */
 
 import {
-  CountTokensResponse,
-  GenerateContentResponse,
-  GenerateContentParameters,
-  CountTokensParameters,
-  // CountTokensResponse, // Assuming this will be handled by LLMService if needed
-  // GenerateContentResponse, // Will use LLMService's ResponseMessage
-  GenerateContentParameters, // This is from @google/genai, consider if it needs to be generic
-  // CountTokensParameters, // Assuming this will be handled by LLMService if needed
-  // EmbedContentResponse, // Out of scope for now
-  // EmbedContentParameters, // Out of scope for now
-  // GoogleGenAI, // No longer directly used here
-  Part, // Keep Part or make generic
+  // CountTokensResponse, // Not used by LLMService path
+  // GenerateContentResponse, // Not used by LLMService path
+  // GenerateContentParameters, // Not used by LLMService path
+  // CountTokensParameters, // Not used by LLMService path
+  Part, // Used by LLMService types indirectly
 } from '@google/genai';
-// import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js'; // May not be needed
-import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
-// import { getEffectiveModel } from './modelCheck.js'; // May need to be re-evaluated or moved
+// import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js'; // Old path
+// import { DEFAULT_GEMINI_MODEL } from '../config/models.js'; // Model comes from Config
+// import { getEffectiveModel } from './modelCheck.js'; // Old path
 import { Config } from '../config/config.js'; // Import main Config
 import { LLMService, SendMessageParams, ResponseMessage, ResponseMessageChunk } from '../services/llm/llm_service.js';
 import { LLMServiceFactory } from '../services/llm/llm_service_factory.js';
@@ -86,7 +79,7 @@ export async function createContentGeneratorConfig(
 /**
  * Implementation of ContentGenerator that uses an LLMService.
  */
-class LLMServiceContentGenerator implements ContentGenerator {
+export class LLMServiceContentGenerator implements ContentGenerator { // Added export
   private llmService: LLMService;
 
   constructor(config: Config) { // Takes the main Config object

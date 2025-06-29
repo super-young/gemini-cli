@@ -8,9 +8,12 @@ import {
   Content,
   GenerateContentConfig,
   GenerateContentResponse,
-  GenerativeModel,
-  GoogleGenerativeAI,
+  GoogleGenAI,
   Part,
+  UsageMetadata as SDKUsageMetadata,
+  GenerateContentResponseUsageMetadata, // For ApiResponseEvent
+  // GenerateContentResponsePart, // Not a top-level export
+  // StreamRes, // Let type inference handle resultStream type
 } from '@google/genai';
 import { Config } from '../../config/config.js';
 import { GeminiAuthService } from '../auth/gemini_auth_service.js';
@@ -21,9 +24,9 @@ import {
   SendMessageParams,
 } from './llm_service.js';
 import { createUserContent } from '../../utils/geminiContent.js'; // Assuming a utility similar to @google/genai's internal
-import { retryWithBackoff } from '../../utils/retry.js';
-import { isFunctionResponse } from '../../utils/messageInspectors.js'; // May need adjustment or be moved
-import { AuthType } from '../../core/contentGenerator.js'; // This might need to be refactored or made generic
+// import { retryWithBackoff } from '../../utils/retry.js'; // Not used directly in current methods
+// import { isFunctionResponse } from '../../utils/messageInspectors.js'; // Not used
+// import { AuthType } from '../../core/contentGenerator.js'; // Not used
 import {
   logApiRequest,
   logApiResponse,
@@ -54,26 +57,21 @@ function mapToGeminiContent(message: string | Part | (string | Part)[]): Content
  * LLMService implementation for Google's Gemini models.
  */
 export class GeminiLLMService implements LLMService {
-  private generativeModel: GenerativeModel;
+  private genAI: GoogleGenAI;
   private history: Content[] = []; // Manages conversation history for the session
+  // private modelName: string; // Model will be specified in each request to ai.models
 
   constructor(
-    private readonly config: Config,
+    private readonly config: Config, // Still needed for logging, other configs potentially
     private readonly authService: GeminiAuthService,
-    // generationConfig can be part of config or passed separately
-    private readonly generationConfig: GenerateContentConfig = {}
+    private readonly defaultGenerationConfig: GenerateContentConfig = {}
   ) {
     const apiKey = this.authService.getApiKey();
     if (!apiKey) {
-      // This service should ideally not be instantiated if auth fails.
-      // The factory should handle this.
       throw new Error('Gemini API key is not available. Cannot initialize GeminiLLMService.');
     }
-    const genAI = new GoogleGenerativeAI(apiKey);
-    this.generativeModel = genAI.getGenerativeModel({
-      model: this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL,
-      // Safety settings and other fixed generation configs could be set here from global config
-    });
+    this.genAI = new GoogleGenAI({ apiKey });
+    // this.modelName = this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL; // Store if needed for default
   }
 
   // Placeholder for logging - adapt from GeminiChat
@@ -95,7 +93,7 @@ export class GeminiLLMService implements LLMService {
 
   private async _logApiResponse(
     durationMs: number,
-    usageMetadata?: unknown, // Define a more specific type later
+    usageMetadata?: GenerateContentResponseUsageMetadata | undefined,
     responseText?: string,
   ): Promise<void> {
     logApiResponse(
@@ -134,110 +132,136 @@ export class GeminiLLMService implements LLMService {
     // More sophisticated history management might be needed for multi-turn conversations
     // that span multiple service instances (if that's a use case).
     const userContent = mapToGeminiContent(params.message)[0]; // Assuming mapToGeminiContent returns a single user message
-    const requestContents = [...this.history, userContent];
+    const userContentParts = mapToGeminiContent(params.message)[0].parts; // Get parts from the new message
+    const currentHistory = [...this.history]; // Current history before adding new user message
+    const requestContents: Content[] = [...currentHistory, { role: 'user', parts: userContentParts }];
+    const modelForThisRequest = this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL;
 
-    this._logApiRequest(requestContents, this.config.getModel());
+    this._logApiRequest(requestContents, modelForThisRequest);
     const startTime = Date.now();
 
     try {
-      const chat = this.generativeModel.startChat({
-        history: this.history, // Provide existing history
-        generationConfig: { ...this.generationConfig, ...params.config }
-      });
+      // Define the request structure inline based on SDK examples
+      // as GenerateContentRequest type import was problematic.
+      const request = {
+        model: modelForThisRequest,
+        contents: requestContents,
+        generationConfig: { ...this.defaultGenerationConfig, ...params.config },
+        // tools: ...,
+        // safetySettings: ...,
+      };
 
-      const result = await chat.sendMessage(userContent.parts); // sendMessage in GenAI SDK takes Parts
-      const response = result.response;
+      const result = await this.genAI.models.generateContent(request);
+      // result is directly GenerateContentResponse, no .response property needed after this call.
+      const response = result; // Adjusted based on ai.models.generateContent typical return
 
       const durationMs = Date.now() - startTime;
+      // Ensure usageMetadata is correctly typed or cast if necessary for _logApiResponse
+      // const meta: SDKUsageMetadata | undefined = response.usageMetadata;
       this._logApiResponse(
         durationMs,
-        response.usageMetadata,
+        response.usageMetadata, // No cast needed if types align
         getStructuredResponse(response)
       );
 
       // Update history
-      this.history.push(userContent);
+      this.history.push({ role: 'user', parts: userContentParts });
       if (response.candidates?.[0]?.content) {
         this.history.push(response.candidates[0].content);
       } else {
-        // Handle cases where there's no content (e.g. safety block)
-        // This matches GeminiChat's behavior of adding an empty model part.
-         this.history.push({ role: 'model', parts: [] });
+        this.history.push({ role: 'model', parts: [] }); // Safety block or empty response
       }
 
-      // Map Gemini's GenerateContentResponse to our generic ResponseMessage
       return {
-        text: () => response.text?.() || '',
-        parts: response.candidates?.[0]?.content?.parts,
-        candidates: response.candidates,
-        usageMetadata: response.usageMetadata,
-        // automaticFunctionCallingHistory: response.automaticFunctionCallingHistory // If applicable
+        text: () => response.text || '', // Use .text getter
+        parts: response.candidates?.[0]?.content?.parts, // Correct mapping for parts
+        candidates: response.candidates, // Assign raw candidates
+        usageMetadata: response.usageMetadata as SDKUsageMetadata,
       };
     } catch (error) {
       const durationMs = Date.now() - startTime;
-      this._logApiError(durationMs, error);
+      this._logApiError(durationMs, error); // Log with instance's modelName
       throw error; // Rethrow or map to a generic error type
     }
   }
 
   async *sendMessageStream(params: SendMessageParams): AsyncGenerator<ResponseMessageChunk> {
     const userContent = mapToGeminiContent(params.message)[0];
-    const requestContents = [...this.history, userContent];
+    const userContentParts = mapToGeminiContent(params.message)[0].parts;
+    const currentHistory = [...this.history];
+    const requestContents: Content[] = [...currentHistory, { role: 'user', parts: userContentParts }];
+    const modelForThisRequest = this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL;
 
-    this._logApiRequest(requestContents, this.config.getModel());
+    this._logApiRequest(requestContents, modelForThisRequest);
     const startTime = Date.now();
 
     try {
-      const chat = this.generativeModel.startChat({
-        history: this.history,
-        generationConfig: { ...this.generationConfig, ...params.config }
-      });
+      // Define the request structure inline
+      const request = {
+        model: modelForThisRequest,
+        contents: requestContents,
+        generationConfig: { ...this.defaultGenerationConfig, ...params.config },
+        // tools: ...,
+        // safetySettings: ...,
+      };
 
-      const result = await chat.sendMessageStream(userContent.parts);
+      const stream = await this.genAI.models.generateContentStream(request); // stream is the AsyncGenerator
 
-      const streamHistoryUpdate: Content[] = [userContent];
-      const allOutputParts: Part[] = [];
+      const collectedParts: Part[] = [];
+      let lastChunk: any; // Let type be inferred for now, or will be GenerateContentResponsePart
 
-      for await (const chunk of result.stream) {
-        const chunkDurationMs = Date.now() - startTime; // Log per chunk or final?
-        // Not logging per chunk for now to avoid excessive logs.
-
+      for await (const chunk of stream) {
+        lastChunk = chunk;
         if (chunk.candidates?.[0]?.content?.parts) {
-           allOutputParts.push(...chunk.candidates[0].content.parts);
+          collectedParts.push(...chunk.candidates[0].content.parts);
         }
-
+        // Debugging chunk.text()
+        // const textFn = chunk.text; // text is a function, so this would assign the function itself
+        // const textVal = typeof chunk.text === 'function' ? chunk.text() : ''; // Check before calling
+        // Restore yield
         yield {
-          text: () => chunk.text?.() || '',
-          parts: chunk.candidates?.[0]?.content?.parts,
-          candidates: chunk.candidates,
-          usageMetadata: chunk.usageMetadata, // Might only be in final chunk
+          text: () => ((chunk as any).text && typeof (chunk as any).text === 'function' ? (chunk as any).text() : (chunk as any).text || ''),
+          parts: (chunk as any).candidates?.[0]?.content?.parts,
+          candidates: (chunk as any).candidates,
+          usageMetadata: (chunk as any).usageMetadata as SDKUsageMetadata | undefined,
         };
       }
 
-      // After stream is complete, log the full response and update history
+      // Assuming the last chunk might contain the aggregated usage metadata
+      const finalUsageMetadata = (lastChunk as any)?.usageMetadata;
+
       const durationMs = Date.now() - startTime;
-      const fullResponseText = getStructuredResponseFromParts(allOutputParts);
-      // TODO: How to get final UsageMetadata for stream? The SDK might provide it on the `result.response` promise.
-      const finalResponse = await result.response; // This promise resolves when stream is done.
+      const fullResponseText = getStructuredResponseFromParts(collectedParts);
 
       this._logApiResponse(
         durationMs,
-        finalResponse.usageMetadata,
+        finalUsageMetadata, // No cast needed if types align
         fullResponseText,
       );
 
-      // Update history
-      this.history.push(userContent);
-      if (finalResponse.candidates?.[0]?.content) {
-        this.history.push(finalResponse.candidates[0].content);
+      // Update history based on collected parts; model's full response content is built from chunks
+      this.history.push({ role: 'user', parts: userContentParts });
+      // Create a representative 'model' content from all collected parts for history
+      if (collectedParts.length > 0) {
+          // We need to construct a Content object for the history.
+          // The lastChunk.candidates[0].content would be ideal if it represents the full message.
+          // If not, we use the collected parts.
+          // For simplicity, if lastChunk and its content exist, use that. Otherwise, build from parts.
+          if (lastChunk?.candidates?.[0]?.content) {
+            this.history.push(lastChunk.candidates[0].content);
+          } else if (collectedParts.length > 0) {
+            this.history.push({role: 'model', parts: collectedParts});
+          } else {
+            this.history.push({ role: 'model', parts: [] });
+          }
       } else {
-         this.history.push({ role: 'model', parts: [] });
+        this.history.push({ role: 'model', parts: [] }); // If no parts, still add empty model response
       }
 
     } catch (error) {
       const durationMs = Date.now() - startTime;
       this._logApiError(durationMs, error);
-      throw error; // Rethrow or map
+      throw error;
     }
   }
 

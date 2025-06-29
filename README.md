@@ -51,6 +51,27 @@ If you need to use a specific model or require a higher request capacity, you ca
 
 For other authentication methods, including Google Workspace accounts, see the [authentication](./docs/cli/authentication.md) guide.
 
+### Using Alternative LLM Providers (e.g., OpenRouter)
+
+The Gemini CLI can be configured to use different LLM providers beyond the default Google Gemini models. For example, you can use models available through [OpenRouter.ai](https://openrouter.ai/).
+
+To do this, you'll typically need to:
+1. Set the LLM provider using the `--llm-provider` flag.
+2. Provide an API key for that provider (e.g., using `--openrouter-api-key` or an environment variable like `OPENROUTER_API_KEY`).
+3. Specify a model compatible with that provider using the `--model` flag.
+
+**Example with OpenRouter:**
+```bash
+# Set your OpenRouter API key as an environment variable
+export OPENROUTER_API_KEY="your_openrouter_key_here"
+
+# Run Gemini CLI with OpenRouter and a specific model
+gemini --llm-provider openrouter --model "openai/gpt-4o"
+> What is the capital of France?
+```
+
+For detailed instructions on configuring different LLM providers and their specific options, please refer to the **[CLI Configuration documentation](./docs/cli/configuration.md#llm-provider-configuration)**.
+
 ## Examples
 
 Once the CLI is running, you can start interacting with Gemini from your shell.
