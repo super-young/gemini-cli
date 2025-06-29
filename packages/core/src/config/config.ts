@@ -241,30 +241,8 @@ export class Config {
     }
   }
 
-  async refreshAuth(authMethod: AuthType) {
-    // This method is a remnant of an older architecture.
-    // In the current LLMService-based architecture, authentication details (like API keys)
-    // are typically loaded when an LLMService (e.g., GeminiLLMService, OpenRouterLLMService)
-    // is instantiated by the LLMServiceFactory.
-    //
-    // A true "refresh" of authentication (e.g., to pick up a new API key set in an environment
-    // variable mid-session) would require re-creating the LLMService instance.
-    // This method does NOT perform such re-creation.
-    //
-    // The 'authMethod' parameter is also a remnant and may not directly map to how
-    // new services are configured, as provider selection is primarily driven by
-    // 'this.llmProvider' and specific API keys stored elsewhere or in environment variables.
-    console.warn(
-      `Config.refreshAuth() was called with authMethod '${authMethod}'. ` +
-      'This method is largely non-functional in the current architecture. ' +
-      'Changes to authentication (e.g., API keys) typically require ' +
-      're-initialization of the LLM services (e.g., by restarting the application or ' +
-      'the relevant component that creates the ContentGenerator).',
-    );
-
-    // Ensure no unintended side-effects from old logic.
-    this.modelSwitchedDuringSession = false;
-  }
+  // The refreshAuth method has been removed as it's non-functional in the current
+  // architecture. Authentication is handled during LLMService instantiation.
 
   getSessionId(): string {
     return this.sessionId;
