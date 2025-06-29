@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MCPServerConfig } from '@google/gemini-cli-core';
+import { MCPServerConfig } from '@super-young/gemini-cli-core';
 
 // These types are used by the new config.ts to structure extension
 // configurations loaded from config.yaml.

@@ -29,7 +29,7 @@ import {
   sessionId,
   logUserPrompt,
   AuthType, // Keep for validateAuthMethod and selectedAuthType logic
-} from '@google/gemini-cli-core';
+} from '@super-young/gemini-cli-core';
 import { validateAuthMethod } from './config/auth.js'; // Keep for auth logic
 import { setMaxSizedBoxDebugging } from './ui/components/shared/MaxSizedBox.js';
 

@@ -1,5 +1,5 @@
 {
-  "name": "@google/gemini-cli",
+  "name": "@super-young/gemini-cli",
   "version": "0.1.8",
   "description": "Gemini CLI",
   "repository": "google-gemini/gemini-cli",
@@ -30,7 +30,7 @@
     "sandboxImageUri": "gemini-cli-sandbox"
   },
   "dependencies": {
-    "@google/gemini-cli-core": "*",
+    "@super-young/gemini-cli-core": "*",
     "@types/update-notifier": "^6.0.8",
     "command-exists": "^1.2.9",
     "diff": "^7.0.0",
