@@ -5,13 +5,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
-import { type HistoryItem, MessageType } from '../types.js';
+// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+import { type HistoryItem, MessageType, SettingScope } from '../types.js'; // SettingScope ADDED
 import {
   allowEditorTypeInSandbox,
   checkHasEditorType,
   EditorType,
-} from '@google/gemini-cli-core';
+  type Config, // ADDED Config
+} from '@super-young/gemini-cli-core';
 
 interface UseEditorSettingsReturn {
   isEditorDialogOpen: boolean;
@@ -24,11 +25,12 @@ interface UseEditorSettingsReturn {
 }
 
 export const useEditorSettings = (
-  loadedSettings: LoadedSettings,
+  config: Config, // CHANGED from loadedSettings
   setEditorError: (error: string | null) => void,
   addItem: (item: Omit<HistoryItem, 'id'>, timestamp: number) => void,
 ): UseEditorSettingsReturn => {
   const [isEditorDialogOpen, setIsEditorDialogOpen] = useState(false);
+  // TODO: Update logic that used loadedSettings.setValue
 
   const openEditorDialog = useCallback(() => {
     setIsEditorDialogOpen(true);

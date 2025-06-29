@@ -201,3 +201,8 @@ export interface ConsoleMessageItem {
   content: string;
   count: number;
 }
+
+export enum SettingScope {
+  User = 'user',
+  Workspace = 'workspace',
+}

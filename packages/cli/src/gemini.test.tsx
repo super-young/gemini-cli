@@ -74,8 +74,6 @@ describe('gemini.tsx main function', () => {
     });
 
   beforeEach(() => {
-    loadSettingsMock = vi.mocked(loadSettings);
-
     // Store and clear sandbox-related env variables to ensure a consistent test environment
     originalEnvGeminiSandbox = process.env.GEMINI_SANDBOX;
     originalEnvSandbox = process.env.SANDBOX;

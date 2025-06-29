@@ -25,7 +25,7 @@ import {
   UnauthorizedError,
   UserPromptEvent,
   AuthType, // Ensuring AuthType is explicitly in this import block
-} from '@google/gemini-cli-core';
+} from '@super-young/gemini-cli-core';
 import { type Part, type PartListUnion } from '@google/genai';
 import {
   StreamingState,
@@ -78,7 +78,7 @@ enum StreamProcessingStatus {
  * Now uses LLMServiceContentGenerator for broader LLM support.
  */
 export const useGeminiStream = (
-  contentGenerator: import('@google/gemini-cli-core').LLMServiceContentGenerator | null,
+  contentGenerator: import('@super-young/gemini-cli-core').LLMServiceContentGenerator | null,
   history: HistoryItem[],
   addItem: UseHistoryManagerReturn['addItem'],
   setShowHelp: React.Dispatch<React.SetStateAction<boolean>>,

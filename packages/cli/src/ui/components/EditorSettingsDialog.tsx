@@ -13,23 +13,25 @@ import {
   type EditorDisplay,
 } from '../editors/editorSettingsManager.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
-import { EditorType, isEditorAvailable } from '@google/gemini-cli-core';
+// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+import { EditorType, isEditorAvailable, type Config } from '@super-young/gemini-cli-core'; // Config ADDED & SCOPE CHANGED
+import { SettingScope } from '../types.js'; // CORRECTED Path
 
 interface EditorDialogProps {
   onSelect: (editorType: EditorType | undefined, scope: SettingScope) => void;
-  settings: LoadedSettings;
+  config: Config; // CHANGED from settings: LoadedSettings
   onExit: () => void;
 }
 
 export function EditorSettingsDialog({
   onSelect,
-  settings,
+  config, // CHANGED from settings
   onExit,
 }: EditorDialogProps): React.JSX.Element {
   const [selectedScope, setSelectedScope] = useState<SettingScope>(
     SettingScope.User,
   );
+  // TODO: Update how preferredEditor is retrieved from config instead of settings
   const [focusedSection, setFocusedSection] = useState<'editor' | 'scope'>(
     'editor',
   );
