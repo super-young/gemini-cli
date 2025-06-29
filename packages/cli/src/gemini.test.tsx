@@ -34,12 +34,12 @@ class MockProcessExitError extends Error {
 vi.mock('./config/config.js', () => ({
   loadCliConfig: vi.fn().mockResolvedValue({
     // config: { // This structure might need to align with actual Config object from core
-      getSandbox: vi.fn(() => false),
-      getQuestion: vi.fn(() => ''),
-    },
+    getSandbox: vi.fn(() => false),
+    getQuestion: vi.fn(() => ''),
     modelWasSwitched: false,
     originalModelBeforeSwitch: null,
     finalModel: 'test-model',
+    // } // Closing brace for config moved or removed depending on intended structure
   }),
 }));
 

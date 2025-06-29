@@ -24,7 +24,7 @@ import {
   BugCommandSettings, // Added for types
   TelemetrySettings as CoreTelemetrySettings, // Alias to avoid conflict
   // GenerationConfig, // Already in core/config
-} from '@google/gemini-cli-core';
+} from '@super-young/gemini-cli-core';
 // import { Settings } from './settings.js'; // Will be replaced by ConfigYaml
 import { Extension, ExtensionConfig } from './extension.js'; // Keep Extension type for now
 import { getCliVersion } from '../utils/version.js';

@@ -12,7 +12,7 @@ import {
   shutdownTelemetry,
   isTelemetrySdkInitialized,
   AuthType, // Added import for AuthType
-} from '@google/gemini-cli-core';
+} from '@super-young/gemini-cli-core';
 import {
   Content,
   Part,
