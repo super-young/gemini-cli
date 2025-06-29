@@ -402,18 +402,45 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     openAuthDialog();
   }, [openAuthDialog, setAuthError]);
 
+  const [contentGenerator, setContentGenerator] = useState<import('@google/gemini-cli-core').LLMServiceContentGenerator | null>(null);
+  const [contentGeneratorError, setContentGeneratorError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (config) {
+      try {
+        // LLMServiceContentGenerator is synchronous and throws errors if factory fails
+        const generator = new (require('@google/gemini-cli-core').LLMServiceContentGenerator)(config);
+        setContentGenerator(generator);
+        setContentGeneratorError(null);
+        if (config.getDebugMode()) {
+          console.log('[DEBUG] LLMServiceContentGenerator initialized successfully.');
+        }
+      } catch (error) {
+        const errMsg = getErrorMessage(error);
+        const userFriendlyError = `Failed to initialize LLM service: ${errMsg}. Please check your configuration (API keys, provider settings in .gemini/settings.json or environment variables).`;
+        setContentGeneratorError(userFriendlyError);
+        setContentGenerator(null);
+        // Add error to history as well for visibility
+        addItem({ type: MessageType.ERROR, text: userFriendlyError }, Date.now());
+        if (config.getDebugMode()) {
+          console.error('[DEBUG] Error initializing LLMServiceContentGenerator:', error);
+        }
+      }
+    }
+  }, [config, addItem]); // addItem added for error logging
+
   const {
     streamingState,
     submitQuery,
-    initError,
+    initError, // This error is from within useGeminiStream, for issues during an active stream attempt
     pendingHistoryItems: pendingGeminiHistoryItems,
     thought,
   } = useGeminiStream(
-    config.getGeminiClient(),
+    contentGenerator, // Pass the state variable
     history,
     addItem,
     setShowHelp,
-    config,
+    config, // Keep config for other settings
     setDebugMessage,
     handleSlashCommand,
     shellModeActive,
@@ -779,7 +806,20 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
             </>
           )}
 
-          {initError && streamingState !== StreamingState.Responding && (
+          {/* Display overall content generator initialization error if present */}
+          {contentGeneratorError && (
+            <Box
+              borderStyle="round"
+              borderColor={Colors.AccentRed}
+              paddingX={1}
+              marginY={1} /* Use marginY to ensure spacing */
+            >
+              <Text color={Colors.AccentRed}>{contentGeneratorError}</Text>
+            </Box>
+          )}
+
+          {/* Display initError from useGeminiStream if it occurs (e.g., during a specific stream attempt) */}
+          {initError && !contentGeneratorError && streamingState !== StreamingState.Responding && (
             <Box
               borderStyle="round"
               borderColor={Colors.AccentRed}
@@ -801,11 +841,11 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
               ) : (
                 <>
                   <Text color={Colors.AccentRed}>
-                    Initialization Error: {initError}
+                    Error during operation: {initError}
                   </Text>
                   <Text color={Colors.AccentRed}>
                     {' '}
-                    Please check API key and configuration.
+                    Please check API key and configuration if persistent.
                   </Text>
                 </>
               )}

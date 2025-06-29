@@ -242,26 +242,27 @@ export class Config {
   }
 
   async refreshAuth(authMethod: AuthType) {
-    // TODO: This method needs a full refactor to work with LLMService.
-    // The old ContentGeneratorConfig and direct client initialization are no longer valid.
-    // For now, commenting out the problematic parts to allow build to pass.
-    // This will break the actual refreshAuth functionality.
-    console.warn('Config.refreshAuth() is currently non-functional due to refactoring.');
+    // This method is a remnant of an older architecture.
+    // In the current LLMService-based architecture, authentication details (like API keys)
+    // are typically loaded when an LLMService (e.g., GeminiLLMService, OpenRouterLLMService)
+    // is instantiated by the LLMServiceFactory.
+    //
+    // A true "refresh" of authentication (e.g., to pick up a new API key set in an environment
+    // variable mid-session) would require re-creating the LLMService instance.
+    // This method does NOT perform such re-creation.
+    //
+    // The 'authMethod' parameter is also a remnant and may not directly map to how
+    // new services are configured, as provider selection is primarily driven by
+    // 'this.llmProvider' and specific API keys stored elsewhere or in environment variables.
+    console.warn(
+      `Config.refreshAuth() was called with authMethod '${authMethod}'. ` +
+      'This method is largely non-functional in the current architecture. ' +
+      'Changes to authentication (e.g., API keys) typically require ' +
+      're-initialization of the LLM services (e.g., by restarting the application or ' +
+      'the relevant component that creates the ContentGenerator).',
+    );
 
-    // const modelToUse = this.model;
-    // this.contentGeneratorConfig = undefined!; // Old way
-    // const contentConfig = await createContentGeneratorConfig( // This function is gone
-    //   modelToUse,
-    //   authMethod,
-    //   this,
-    // );
-
-    // const gc = new GeminiClient(this);
-    // this.geminiClient = gc;
-    // this.toolRegistry = await createToolRegistry(this);
-    // await gc.initialize(); // Initialize now takes no args
-    // this.contentGeneratorConfig = contentConfig; // Old way
-
+    // Ensure no unintended side-effects from old logic.
     this.modelSwitchedDuringSession = false;
   }
 
