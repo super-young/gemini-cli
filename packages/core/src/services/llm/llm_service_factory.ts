@@ -43,7 +43,7 @@ export class LLMServiceFactory {
             'OpenRouter API key is not configured. Please set it using --openrouter-api-key or in the config.',
           );
         }
-        if (!this.config.model) {
+         if (!this.config.getModel()) { // Use getter
             throw new Error(
               'OpenRouter model is not configured. Please set it using --model or in the config.',
             );

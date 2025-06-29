@@ -218,14 +218,19 @@ The CLI automatically loads environment variables from an `.env` file. The loadi
 2.  If not found, it searches upwards in parent directories until it finds an `.env` file or reaches the project root (identified by a `.git` folder) or the home directory.
 3.  If still not found, it looks for `~/.env` (in the user's home directory).
 
-- **`GEMINI_API_KEY`** (Required):
-  - Your API key for the Gemini API.
-  - **Crucial for operation.** The CLI will not function without it.
+- **`GEMINI_API_KEY`**:
+  - Your API key for the Gemini API, used when `llmProvider` is `gemini` (default).
+  - Crucial for operation when using the Gemini provider with an API key.
   - Set this in your shell profile (e.g., `~/.bashrc`, `~/.zshrc`) or an `.env` file.
+- **`OPENROUTER_API_KEY`**:
+  - Your API key for OpenRouter.ai, used when `llmProvider` is `openrouter`.
+  - Required if using the OpenRouter provider and `--openrouter-api-key` argument is not set.
+  - Set this in your shell profile or an `.env` file.
 - **`GEMINI_MODEL`**:
-  - Specifies the default Gemini model to use.
-  - Overrides the hardcoded default
-  - Example: `export GEMINI_MODEL="gemini-2.5-flash"`
+  - Specifies the default model to use when the provider is `gemini`.
+  - Overrides the hardcoded default Gemini model.
+  - For other providers like OpenRouter, the model must be specified using the `--model` command-line argument.
+  - Example: `export GEMINI_MODEL="gemini-1.5-flash"`
 - **`GOOGLE_API_KEY`**:
   - Your Google Cloud API key.
   - Required for using Vertex AI in express mode.
@@ -265,13 +270,59 @@ The CLI automatically loads environment variables from an `.env` file. The loadi
   - Specifies the endpoint for the code assist server.
   - This is useful for development and testing.
 
+## LLM Provider Configuration
+
+Gemini CLI allows you to choose different Large Language Model (LLM) providers for generating responses. By default, it uses Google's Gemini models. You can switch to other supported providers like OpenRouter.
+
+### Using OpenRouter
+
+[OpenRouter.ai](https://openrouter.ai/) provides access to a variety of LLMs from different developers through a unified API. To use OpenRouter with Gemini CLI:
+
+1.  **Set the LLM Provider**: Use the `--llm-provider openrouter` command-line argument.
+2.  **Provide an API Key**:
+    *   Use the `--openrouter-api-key YOUR_OPENROUTER_KEY` command-line argument, replacing `YOUR_OPENROUTER_KEY` with your actual OpenRouter API key.
+    *   Alternatively, set the `OPENROUTER_API_KEY` environment variable.
+3.  **Specify a Model**: You **must** specify a model compatible with OpenRouter using the `--model "provider/model-name"` argument (e.g., `--model "openai/gpt-4o"` or `--model "anthropic/claude-3-opus"`). Refer to the [OpenRouter documentation](https://openrouter.ai/docs#models) for a list of available models.
+
+**Example:**
+
+```bash
+gemini --llm-provider openrouter \
+       --model "openai/gpt-4o" \
+       --openrouter-api-key "sk-or-v1-..." \
+       --prompt "Translate 'hello world' to French."
+```
+
+Or using environment variables:
+
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."
+gemini --llm-provider openrouter \
+       --model "openai/gpt-4o" \
+       --prompt "Translate 'hello world' to French."
+```
+
+---
+
 ## Command-Line Arguments
 
 Arguments passed directly when running the CLI can override other configurations for that specific session.
 
 - **`--model <model_name>`** (**`-m <model_name>`**):
-  - Specifies the Gemini model to use for this session.
-  - Example: `npm start -- --model gemini-1.5-pro-latest`
+  - Specifies the model to use.
+  - For the default Gemini provider, e.g., `"gemini-1.5-pro-latest"`.
+  - For OpenRouter, this **must** be specified with the provider/model format, e.g., `"openai/gpt-4o"`.
+  - Example: `gemini --model "gemini-1.5-pro-latest"`
+  - Example (OpenRouter): `gemini --llm-provider openrouter --model "openai/gpt-4o"`
+- **`--llm-provider <provider>`**:
+  - Specifies the LLM provider to use.
+  - **Choices**: `gemini`, `openrouter`
+  - **Default**: `gemini`
+  - Example: `gemini --llm-provider openrouter`
+- **`--openrouter-api-key <key>`**:
+  - API key for OpenRouter.ai.
+  - Required if `--llm-provider` is `openrouter` and the `OPENROUTER_API_KEY` environment variable is not set.
+  - Example: `gemini --llm-provider openrouter --openrouter-api-key "sk-or-v1-..."`
 - **`--prompt <your_prompt>`** (**`-p <your_prompt>`**):
   - Used to pass a prompt directly to the command. This invokes Gemini CLI in a non-interactive mode.
 - **`--sandbox`** (**`-s`**):

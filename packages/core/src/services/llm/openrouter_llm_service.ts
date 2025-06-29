@@ -13,7 +13,7 @@ import {
   SendMessageParams,
 } from './llm_service.js';
 import { fetch, Agent, RequestInfo, RequestInit, Response } from 'undici';
-import { Part } from '@google/genai'; // Using this for Part type, might need a generic one
+import { Part, GenerateContentResponseUsageMetadata } from '@google/genai'; // Added GenerateContentResponseUsageMetadata
 import { streamToJson } from '../../utils/streamToJson.js'; // Utility to parse NDJSON stream
 import {
   logApiRequest,
@@ -117,7 +117,7 @@ export class OpenRouterLLMService implements LLMService {
   private _logApiResponse(
     model: string,
     durationMs: number,
-    usageMetadata?: unknown,
+    usageMetadata?: GenerateContentResponseUsageMetadata | undefined, // Changed type
     responseText?: string,
   ): void {
     logApiResponse(
@@ -162,6 +162,7 @@ export class OpenRouterLLMService implements LLMService {
       // max_tokens: params.config?.maxTokens, // Adjust names as per OpenRouter
     };
     if (params.config?.temperature) requestBody.temperature = params.config.temperature;
+    if (params.config?.maxOutputTokens) requestBody.max_tokens = params.config.maxOutputTokens;
     // Add other compatible params from params.config to requestBody
 
     this._logApiRequest(model, requestBody);
@@ -192,16 +193,22 @@ export class OpenRouterLLMService implements LLMService {
       const responseData = await undiciResponse.json() as OpenRouterResponse;
 
       const responseText = responseData.choices?.[0]?.message?.content || '';
-      this._logApiResponse(model, durationMs, responseData.usage, responseText);
+
+      let mappedUsage: GenerateContentResponseUsageMetadata | undefined = undefined;
+      if (responseData.usage) {
+        mappedUsage = {
+          promptTokenCount: responseData.usage.prompt_tokens,
+          candidatesTokenCount: responseData.usage.completion_tokens,
+          totalTokenCount: responseData.usage.total_tokens,
+        };
+      }
+      this._logApiResponse(model, durationMs, mappedUsage, responseText);
 
       // Map OpenRouterResponse to generic ResponseMessage
       return {
         text: () => responseText,
-        // TODO: Map OpenRouter choices to generic parts if needed.
-        // For now, focusing on simple text response.
-        // parts: responseData.choices?.[0]?.message ? [{text: responseData.choices[0].message.content || ''}] : [],
-        usageMetadata: responseData.usage,
-        // rawResponse: responseData, // Optionally include raw response
+        usageMetadata: mappedUsage, // Return mapped usage
+        // rawResponse: responseData,
       };
 
     } catch (error) {
@@ -224,6 +231,7 @@ export class OpenRouterLLMService implements LLMService {
       // TODO: Map params.config to OpenRouter params
     };
     if (params.config?.temperature) requestBody.temperature = params.config.temperature;
+    if (params.config?.maxOutputTokens) requestBody.max_tokens = params.config.maxOutputTokens;
 
     this._logApiRequest(model, requestBody);
     const startTime = Date.now();
@@ -252,24 +260,29 @@ export class OpenRouterLLMService implements LLMService {
       }
 
       // Process the stream (NDJSON)
-      for await (const jsonEvent of streamToJson(undiciResponse.body)) {
-        if (jsonEvent.error) { // streamToJson can yield error objects
-            this._logApiError(model, Date.now() - startTime, new Error(`OpenRouter stream parsing error: ${jsonEvent.error.message}`));
-            throw new Error(`OpenRouter stream parsing error: ${jsonEvent.error.message}`);
+      for await (const jsonEvent of streamToJson(undiciResponse.body as ReadableStream<Uint8Array>)) { // Cast body
+        if ((jsonEvent as any).error) { // Cast jsonEvent
+            this._logApiError(model, Date.now() - startTime, new Error(`OpenRouter stream parsing error: ${(jsonEvent as any).error.message}`));
+            throw new Error(`OpenRouter stream parsing error: ${(jsonEvent as any).error.message}`);
         }
 
-        const chunk = jsonEvent as OpenRouterResponse; // Assuming streamToJson yields parsed chunks
+        const chunk = jsonEvent as OpenRouterResponse;
         const chunkContent = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content ||'';
         responseText += chunkContent;
 
+        let mappedChunkUsage: GenerateContentResponseUsageMetadata | undefined = undefined;
+        if (chunk.usage) {
+          mappedChunkUsage = {
+            promptTokenCount: chunk.usage.prompt_tokens,
+            candidatesTokenCount: chunk.usage.completion_tokens,
+            totalTokenCount: chunk.usage.total_tokens,
+          };
+        }
         yield {
           text: () => chunkContent,
-          // parts: chunk.choices?.[0]?.delta?.content ? [{text: chunk.choices[0].delta.content}] : [],
-          usageMetadata: chunk.usage, // Usage might be in the last chunk or not at all in stream
-          // rawChunk: chunk,
+          usageMetadata: mappedChunkUsage,
         };
 
-        // Handle finish reason if needed (e.g. stop, length)
         if (chunk.choices?.[0]?.finish_reason) {
           // Streaming finished
           break;

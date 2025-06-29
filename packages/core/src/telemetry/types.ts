@@ -50,15 +50,16 @@ export class StartSessionEvent {
   file_filtering_respect_git_ignore: boolean;
 
   constructor(config: Config) {
-    const generatorConfig = config.getContentGeneratorConfig();
+    // const generatorConfig = config.getContentGeneratorConfig(); // Method removed
     const mcpServers = config.getMcpServers();
 
-    let useGemini = false;
-    let useVertex = false;
-    if (generatorConfig && generatorConfig.authType) {
-      useGemini = generatorConfig.authType === AuthType.USE_GEMINI;
-      useVertex = generatorConfig.authType === AuthType.USE_VERTEX_AI;
-    }
+    // Determine API key usage based on provider
+    // This simplification assumes 'gemini' provider implies API key usage for telemetry purposes.
+    // Vertex AI distinction needs to be revisited if it's a separate provider or config flag.
+    const isGeminiProvider = config.llmProvider === 'gemini';
+    const isOpenRouterProvier = config.llmProvider === 'openrouter';
+    const apiKeyEnabled = isGeminiProvider || isOpenRouterProvier;
+    const vertexAiEnabled = false; // TODO: Revisit Vertex AI detection
 
     this['event.name'] = 'cli_config';
     this.model = config.getModel();
@@ -67,8 +68,8 @@ export class StartSessionEvent {
       typeof config.getSandbox() === 'string' || !!config.getSandbox();
     this.core_tools_enabled = (config.getCoreTools() ?? []).join(',');
     this.approval_mode = config.getApprovalMode();
-    this.api_key_enabled = useGemini || useVertex;
-    this.vertex_ai_enabled = useVertex;
+    this.api_key_enabled = apiKeyEnabled; // Use new variable
+    this.vertex_ai_enabled = vertexAiEnabled; // Use new variable
     this.debug_enabled = config.getDebugMode();
     this.mcp_servers = mcpServers ? Object.keys(mcpServers).join(',') : '';
     this.telemetry_enabled = config.getTelemetryEnabled();

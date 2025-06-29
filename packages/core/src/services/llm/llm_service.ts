@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Content, GenerateContentConfig, Part } from "@google/genai";
+import { Content, GenerateContentConfig, Part, Candidate, UsageMetadata as SDKUsageMetadata } from "@google/genai";
 
 // Define generic parameter types, adaptable from existing Gemini types
 // These may need further generalization as more providers are added.
@@ -26,8 +26,8 @@ export interface ResponseMessage {
   // TODO: Define a way to access function calls if they are part of the response
   // functionCalls?: FunctionCall[];
   automaticFunctionCallingHistory?: Content[]; // Keep if relevant for AFC
-  candidates?: Content[]; // Keep if relevant for candidates
-  usageMetadata?: unknown; // Define a more specific type later
+  candidates?: Candidate[]; // Changed from Content[] to Candidate[]
+  usageMetadata?: SDKUsageMetadata | unknown; // More specific for Gemini, general for others
 }
 
 export interface ResponseMessageChunk {
@@ -38,8 +38,8 @@ export interface ResponseMessageChunk {
   // TODO: Consider a rawChunk field
   // rawChunk?: unknown;
   automaticFunctionCallingHistory?: Content[];
-  candidates?: Content[];
-  usageMetadata?: unknown;
+  candidates?: Candidate[]; // Changed from Content[] to Candidate[]
+  usageMetadata?: SDKUsageMetadata | unknown; // Consistent with ResponseMessage
 }
 
 // TODO: Define UsageMetadata if it's to be a common field.

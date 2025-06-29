@@ -33,9 +33,9 @@ import { getErrorMessage } from '../utils/errors.js';
 import { tokenLimit } from './tokenLimits.js';
 import {
   ContentGenerator,
-  // ContentGeneratorConfig, // No longer passing this specific config type
   createContentGenerator,
 } from './contentGenerator.js';
+// import { ContentGeneratorConfig } from './contentGenerator.js'; // Type not directly used in Client constructor path
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { AuthType } from './contentGenerator.js';
@@ -62,8 +62,7 @@ export class GeminiClient {
     }
 
     // Model and embeddingModel will be primarily sourced from config when LLMService is created.
-    // this.model = config.getModel(); // This might be determined by the LLMService now
-    this.model = config.model; // Keep a reference to the originally configured model
+    this.model = config.getModel(); // Use getter
     this.embeddingModel = config.getEmbeddingModel(); // Embedding model might be Gemini-specific
   }
 
@@ -207,7 +206,7 @@ export class GeminiClient {
       const userMemory = this.config.getUserMemory();
       const systemInstruction = getCoreSystemPrompt(userMemory);
       // Use the model from the main config for GeminiChat initialization
-      const currentModelForChat = this.config.model; // Or this.config.getModel() if it reflects the true current model
+      const currentModelForChat = this.config.getModel(); // Use getter
       const generateContentConfigWithThinking = isThinkingSupported(currentModelForChat)
         ? {
             ...this.generateContentConfig, // This is GeminiClient's internal config
@@ -526,7 +525,7 @@ export class GeminiClient {
     }
 
     const countTokensParams = {
-        model: this.config.model, // Use the currently configured model
+        model: this.config.getModel(), // Use getter
         contents: history,
     } as any; // Cast to any due to CountTokensParameters potentially not matching
 
@@ -539,17 +538,17 @@ export class GeminiClient {
       if (originalTokenCount === undefined) {
         // If token count is undefined, we can't determine if we need to compress.
         console.warn(
-          `Could not determine token count for model ${this.config.model}. Skipping compression check.`,
+           `Could not determine token count for model ${this.config.getModel()}. Skipping compression check.`, // Use getter
         );
         return null;
       }
       const tokenCount = originalTokenCount; // Now guaranteed to be a number
 
-      const limit = tokenLimit(this.config.model);
+       const limit = tokenLimit(this.config.getModel()); // Use getter
       if (!limit) {
         // If no limit is defined for the model, we can't compress.
         console.warn(
-          `No token limit defined for model ${this.config.model}. Skipping compression check.`,
+           `No token limit defined for model ${this.config.getModel()}. Skipping compression check.`,
         );
         return null;
       }
@@ -578,7 +577,7 @@ export class GeminiClient {
     this.chat = await this.startChat(newHistory);
     const newTokenCount = (
       await (this.getContentGenerator() as any).countTokens({ // Cast to any
-        model: this.config.model,
+        model: this.config.getModel(), // Use getter
         contents: newHistory,
       })
     ).totalTokens;

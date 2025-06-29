@@ -40,9 +40,9 @@ const createDirent = (name: string, type: 'file' | 'dir'): FSDirent => ({
   isSymbolicLink: () => false,
   isFIFO: () => false,
   isSocket: () => false,
-  path: '',
-  parentPath: '',
-});
+  path: '', // Adding back to satisfy a stricter Dirent type expectation in test env
+  parentPath: '', // Adding back
+} as FSDirent); // Cast to FSDirent to acknowledge these are not standard
 
 describe('getFolderStructure', () => {
   beforeEach(() => {
