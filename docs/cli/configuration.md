@@ -9,12 +9,12 @@ Configuration is applied in the following order of precedence (higher numbers ov
 1.  **Default values:** Hardcoded defaults within the application.
 2.  **User `config.yaml` file:** Global settings for the current user, located at `~/.gemini/config.yaml`.
 3.  **Workspace `config.yaml` file:** Workspace-specific settings, located at `./.gemini/config.yaml` (relative to the current working directory). Workspace settings override user settings.
-4.  **Environment variables:** System-wide or session-specific variables, potentially loaded from `.env` files (see below).
+4.  **Environment variables:** System-wide or session-specific variables. These are loaded from your shell environment and can also be conveniently managed using an `.env` file in your project's root directory (see [Environment Variables & `.env` Files](#environment-variables--env-files) section below).
 5.  **Command-line arguments:** Values passed when launching the CLI.
 
 ## The `config.yaml` file
 
-Gemini CLI uses `config.yaml` files for persistent configuration. There are two locations for these files:
+Gemini CLI uses `config.yaml` files for persistent configuration. There are two primary locations for these files:
 
 - **User `config.yaml` file:**
   - **Location:** `~/.gemini/config.yaml` (where `~` is your home directory).
@@ -22,8 +22,26 @@ Gemini CLI uses `config.yaml` files for persistent configuration. There are two 
 - **Workspace `config.yaml` file:**
   - **Location:** `.gemini/config.yaml` within your project's root directory (or current working directory).
   - **Scope:** Applies only when running Gemini CLI from that specific workspace. Workspace settings override corresponding user settings.
+  - An example can be found at `.gemini/config.yaml.example` in your project, showcasing common configurations.
 
-**Note on environment variables in `config.yaml`:** String values within your `config.yaml` files can reference environment variables using either `$VAR_NAME` or `${VAR_NAME}` syntax. These variables will be automatically resolved when the configuration is loaded. For example, if you have an environment variable `MY_API_TOKEN`, you could use it in `config.yaml` like this: `openRouterApiKey: "$MY_API_TOKEN"`.
+**Using Environment Variables within `config.yaml`:**
+
+A key feature of `config.yaml` is its ability to reference environment variables. This is particularly useful for sensitive data like API keys, allowing you to keep them out of version control.
+
+- **Syntax:** Use either `$VAR_NAME` or `${VAR_NAME}` within string values in your `config.yaml`.
+- **Resolution:** These variables are resolved using the current environment at the time the CLI loads the configuration. This means variables set in your shell or loaded from an `.env` file can be used.
+- **Example:**
+  ```yaml
+  # In .gemini/config.yaml
+  llmProvider: 'openrouter'
+  openRouter:
+    apiKey: '$OPENROUTER_API_KEY' # Value comes from OPENROUTER_API_KEY env var
+    model: 'anthropic/claude-3-opus'
+  azure:
+    apiKey: '${AZURE_API_KEY}' # Value comes from AZURE_API_KEY env var
+    apiBase: '${AZURE_API_BASE}'
+  ```
+  You would then define `OPENROUTER_API_KEY`, `AZURE_API_KEY`, and `AZURE_API_BASE` in your shell environment or, more commonly, in an `.env` file at the root of your project.
 
 ### The `.gemini` directory in your project
 
@@ -174,65 +192,67 @@ The CLI keeps a history of shell commands you run. To avoid conflicts between di
 
 ## Environment Variables & `.env` Files
 
-Environment variables are a common way to configure applications, especially for sensitive information like API keys or for settings that might change between environments.
+Environment variables provide a flexible way to configure the Gemini CLI, especially for sensitive data like API keys or for settings that differ across environments (development, production).
 
-The CLI automatically loads environment variables from an `.env` file. The loading order is:
+**Loading `.env` files:**
 
-1.  `.env` file in the current working directory.
-2.  If not found, it searches upwards in parent directories until it finds an `.env` file or reaches the project root (identified by a `.git` folder) or the home directory.
-3.  If still not found, it looks for `~/.env` (in the user's home directory).
+The Gemini CLI automatically loads environment variables from a file named `.env` located at the **root of your current project workspace** (typically where your main `package.json` or `.git` folder resides). This allows you to define project-specific environment variables without cluttering your global shell configuration.
 
-- **`GEMINI_API_KEY`**:
-  - Your API key for the Gemini API, used when `llmProvider` is `gemini` (default).
-  - Crucial for operation when using the Gemini provider with an API key.
-  - Set this in your shell profile (e.g., `~/.bashrc`, `~/.zshrc`) or an `.env` file.
-- **`OPENROUTER_API_KEY`**:
-  - Your API key for OpenRouter.ai, used when `llmProvider` is `openrouter`.
-  - Required if using the OpenRouter provider and `--openrouter-api-key` argument is not set.
-  - Set this in your shell profile or an `.env` file.
-- **`GEMINI_MODEL`**:
-  - Specifies the default model to use when the provider is `gemini`.
-  - Overrides the hardcoded default Gemini model.
-  - For other providers like OpenRouter, the model must be specified using the `--model` command-line argument.
-  - Example: `export GEMINI_MODEL="gemini-1.5-flash"`
-- **`GOOGLE_API_KEY`**:
-  - Your Google Cloud API key.
-  - Required for using Vertex AI in express mode.
-  - Ensure you have the necessary permissions and set the `GOOGLE_GENAI_USE_VERTEXAI=true` environment variable.
-  - Example: `export GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY"`.
-- **`GOOGLE_CLOUD_PROJECT`**:
-  - Your Google Cloud Project ID.
-  - Required for using Code Assist or Vertex AI.
-  - If using Vertex AI, ensure you have the necessary permissions and set the `GOOGLE_GENAI_USE_VERTEXAI=true` environment variable.
-  - Example: `export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"`.
-- **`GOOGLE_APPLICATION_CREDENTIALS`** (string):
-  - **Description:** The path to your Google Application Credentials JSON file.
-  - **Example:** `export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/credentials.json"`
-- **`OTLP_GOOGLE_CLOUD_PROJECT`**:
-  - Your Google Cloud Project ID for Telemetry in Google Cloud
-  - Example: `export OTLP_GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"`.
-- **`GOOGLE_CLOUD_LOCATION`**:
-  - Your Google Cloud Project Location (e.g., us-central1).
-  - Required for using Vertex AI in non express mode.
-  - If using Vertex AI, ensure you have the necessary permissions and set the `GOOGLE_GENAI_USE_VERTEXAI=true` environment variable.
-  - Example: `export GOOGLE_CLOUD_LOCATION="YOUR_PROJECT_LOCATION"`.
-- **`GEMINI_SANDBOX`**:
-  - Alternative to the `sandbox` setting in `settings.json`.
-  - Accepts `true`, `false`, `docker`, `podman`, or a custom command string.
-- **`SEATBELT_PROFILE`** (macOS specific):
-  - Switches the Seatbelt (`sandbox-exec`) profile on macOS.
-  - `permissive-open`: (Default) Restricts writes to the project folder (and a few other folders, see `packages/cli/src/utils/sandbox-macos-permissive-open.sb`) but allows other operations.
-  - `strict`: Uses a strict profile that declines operations by default.
-  - `<profile_name>`: Uses a custom profile. To define a custom profile, create a file named `sandbox-macos-<profile_name>.sb` in your project's `.gemini/` directory (e.g., `my-project/.gemini/sandbox-macos-custom.sb`).
-- **`DEBUG` or `DEBUG_MODE`** (often used by underlying libraries or the CLI itself):
-  - Set to `true` or `1` to enable verbose debug logging, which can be helpful for troubleshooting.
-- **`NO_COLOR`**:
-  - Set to any value to disable all color output in the CLI.
-- **`CLI_TITLE`**:
-  - Set to a string to customize the title of the CLI.
-- **`CODE_ASSIST_ENDPOINT`**:
-  - Specifies the endpoint for the code assist server.
-  - This is useful for development and testing.
+- **Creation:** Simply create a file named `.env` in your project's root directory.
+- **Format:** Use `KEY=VALUE` pairs, one per line.
+  ```env
+  # Example .env file content
+  OPENROUTER_API_KEY="sk-or-v1-your-key-here"
+  ANTHROPIC_API_KEY="sk-ant-your-key-here"
+  AZURE_API_KEY="your_azure_key"
+  AZURE_API_BASE="https://your-resource.openai.azure.com/"
+  VERTEX_AI_PROJECT="your-gcp-project-id"
+  VERTEX_AI_LOCATION="us-central1"
+  # You can also set general Gemini settings
+  # GEMINI_MODEL="gemini-1.5-flash-latest"
+  ```
+- **Version Control:** Remember to add `.env` to your `.gitignore` file to prevent committing sensitive credentials. You can provide a `.env.example` file as a template for other users.
+
+**Precedence:**
+
+1.  Variables set directly in your shell (e.g., `export MY_VAR=value`) take the highest precedence.
+2.  Variables defined in the project's root `.env` file are loaded next.
+3.  If the CLI directly consumes an environment variable (e.g., `OPENROUTER_API_KEY`), the value from the environment (shell or `.env`) will be used.
+4.  If an environment variable is referenced within `config.yaml` (e.g., `apiKey: "$OPENROUTER_API_KEY"`), the `config.yaml` will use the value of that variable present in the environment at load time.
+
+**Common Environment Variables for Provider Configuration:**
+
+While many settings are available in `config.yaml`, API keys for providers are best managed as environment variables (either in your shell or an `.env` file) and then referenced in `config.yaml` if needed, or used directly by the CLI if it looks for specific variable names.
+
+- **`OPENAI_API_KEY`**: Your API key for OpenAI.
+- **`ANTHROPIC_API_KEY`**: Your API key for Anthropic.
+- **`COHERE_API_KEY`**: Your API key for Cohere.
+- **`AZURE_API_KEY`**: Your API key for Azure OpenAI services.
+- **`AZURE_API_BASE`**: The endpoint URL for your Azure OpenAI resource.
+- **`AZURE_API_VERSION`**: The API version for Azure OpenAI (e.g., "2023-07-01-preview").
+- **`VERTEX_AI_PROJECT`**: Your Google Cloud Project ID for Vertex AI.
+- **`VERTEX_AI_LOCATION`**: The Google Cloud location for Vertex AI (e.g., "us-central1").
+- **`GOOGLE_API_KEY`**: Generic Google API key, might be used by some Google services if ADC is not set up. (Note: For Gemini models, `GEMINI_API_KEY` or Application Default Credentials are preferred).
+- **`GEMINI_API_KEY`**: Your API key for Google Gemini models (when not using ADC or Vertex AI).
+- **`OPENROUTER_API_KEY`**: Your API key for OpenRouter.ai.
+
+**Other Useful Environment Variables:**
+
+- **`GEMINI_MODEL`**: Specifies the default model to use (e.g., "gemini-1.5-pro-latest"). Can be overridden by `model` in `config.yaml` or `--model` CLI argument.
+- **`GOOGLE_APPLICATION_CREDENTIALS`** (string): Path to your Google Application Credentials JSON file for authenticating with Google Cloud services.
+- **`GEMINI_SANDBOX`**: Controls sandboxing behavior (e.g., `true`, `false`, `docker`).
+- **`DEBUG` or `DEBUG_MODE`**: Set to `true` or `1` for verbose debug logging.
+- **`NO_COLOR`**: Disables color output.
+
+(The existing list of other specific environment variables like `OTLP_GOOGLE_CLOUD_PROJECT`, `SEATBELT_PROFILE`, `CLI_TITLE`, `CODE_ASSIST_ENDPOINT` can remain here as they are more specific than general provider config).
+
+- **`GOOGLE_CLOUD_PROJECT`**: (Already listed, ensure it mentions its use for Vertex AI and ADC context).
+- **`OTLP_GOOGLE_CLOUD_PROJECT`**: ...
+- **`GOOGLE_CLOUD_LOCATION`**: ...
+- **`SEATBELT_PROFILE`**: ...
+- **`CLI_TITLE`**: ...
+- **`CODE_ASSIST_ENDPOINT`**: ...
+
 
 ## LLM Provider Configuration
 
@@ -282,26 +302,38 @@ By default, Gemini CLI uses Google's Gemini models.
 
    You can configure OpenRouter in your user or workspace `config.yaml` file (`~/.gemini/config.yaml` or `./.gemini/config.yaml`). This is useful for persistent configuration.
 
-   Set the following keys in your `config.yaml`:
+   Set the following keys in your `config.yaml` (e.g., in `.gemini/config.yaml`):
    - **`llmProvider`**: Set to `openrouter`.
    - **`model`**: Set to the desired OpenRouter model string (e.g., `"openai/gpt-4o"`). This is **required** when `llmProvider` is `openrouter`.
-   - **`openRouterApiKey`**: Your OpenRouter API key. You can also use environment variable substitution (e.g., `"$OPENROUTER_API_KEY"`).
+   - **`openRouter.apiKey`**: Your OpenRouter API key. It's highly recommended to use environment variable substitution here.
 
-   **Example `config.yaml` for OpenRouter:**
+   **Example `.gemini/config.yaml` for OpenRouter:**
    ```yaml
-   llmProvider: 'openrouter'
-   model: 'anthropic/claude-3-sonnet'
-   openRouterApiKey: 'sk-or-v1-your-api-key-here'
-   # ... other settings
+   # --- LLM Provider Configuration ---
+   llmProvider: 'openrouter' # Default provider
+
+   # Default model to use with the llmProvider (OpenRouter in this case)
+   # This specific model string is for OpenRouter.
+   model: 'anthropic/claude-3-sonnet-20240229'
+
+   openRouter:
+     apiKey: '$OPENROUTER_API_KEY' # Securely references the API key from your .env file or shell environment
+     # You can specify other OpenRouter specific parameters here if the config schema supports it.
+
+   # Example for configuring another provider, say Azure, referencing .env variables
+   azure:
+     apiKey: '$AZURE_API_KEY'
+     apiBase: '$AZURE_API_BASE'
+     apiVersion: '2023-07-01-preview'
+     # model: 'your-azure-deployment-name' # Often set with --model azure/deployment-name
    ```
-   Or, using an environment variable for the key within `config.yaml`:
-   ```yaml
-   llmProvider: 'openrouter'
-   model: 'google/gemini-pro' # OpenRouter also proxies some Gemini models
-   openRouterApiKey: '$OPENROUTER_API_KEY' # Will be replaced by the env var value
-   # ... other settings
+   Then, ensure your `.env` file (at the project root) contains:
+   ```env
+   OPENROUTER_API_KEY="sk-or-v1-your-actual-key"
+   AZURE_API_KEY="your_azure_openai_key"
+   AZURE_API_BASE="https://your-azure-resource.openai.azure.com/"
    ```
-   With these settings in `config.yaml`, you can simply run:
+   With these settings, you can simply run:
    ```bash
    gemini --prompt "Tell me a joke about OpenRouter."
    ```
