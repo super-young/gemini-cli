@@ -28,6 +28,7 @@ import {
 // import { Settings } from './settings.js'; // Will be replaced by ConfigYaml
 import { Extension, ExtensionConfig } from './extension.js'; // Keep Extension type for now
 import { getCliVersion } from '../utils/version.js';
+import { type GenerationConfig } from '@google/genai'; // Import type
 import * as dotenv from 'dotenv';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -37,12 +38,25 @@ import { loadSandboxConfig } from './sandboxConfig.js';
 
 // TODO: Replace with a proper logger solution if available in the project
 const logger = {
+  currentLevel: 'info', // Default level
+  setLevel: (level: string) => {
+    const validLevels = ['debug', 'info', 'warn', 'error'];
+    if (validLevels.includes(level.toLowerCase())) {
+      logger.currentLevel = level.toLowerCase();
+      // Conditional logging for setLevel itself to avoid noise if not in debug
+      if (logger.currentLevel === 'debug') {
+        console.debug(`[Logger] Log level set to: ${logger.currentLevel}`);
+      }
+    }
+  },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  debug: (...args: any[]) => console.debug('[DEBUG]', ...args),
+  debug: (...args: any[]) => { if (logger.currentLevel === 'debug') console.debug('[DEBUG]', ...args); },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  warn: (...args: any[]) => console.warn('[WARN]', ...args),
+  warn: (...args: any[]) => { if (['debug', 'info', 'warn'].includes(logger.currentLevel)) console.warn('[WARN]', ...args); },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error: (...args: any[]) => console.error('[ERROR]', ...args),
+  error: (...args: any[]) => console.error('[ERROR]', ...args), // Errors always shown
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  info: (...args: any[]) => { if (['debug', 'info', 'warn', 'error'].includes(logger.currentLevel) && logger.currentLevel !== 'error' && logger.currentLevel !== 'warn') console.info('[INFO]', ...args); },
 };
 
 interface CliArgs {
@@ -111,6 +125,9 @@ interface ConfigYaml {
   openRouterApiKey?: string;
   model?: string;
   generationConfig?: GenerationConfig; // From @google/genai
+  embeddingModel?: string; // For specifying the embedding model
+  debugMode?: boolean; // For enabling debug mode
+  logLevel?: string; // For setting log level, e.g., "debug", "info", "warn"
 }
 
 // Helper function to load and parse a YAML file
@@ -366,7 +383,17 @@ export async function loadCliConfig(sessionId: string): Promise<Config> {
 
   // 2. Parse command-line arguments, using YAML config for defaults
   const argv = await parseArguments(mergedYamlConfig);
-  const debugMode = argv.debug ?? mergedYamlConfig.debugMode ?? false; // debugMode might not be in YAML, so ensure a final default
+  const debugMode = argv.debug ?? mergedYamlConfig.debugMode ?? false;
+  const logLevel = mergedYamlConfig.logLevel; // Get logLevel from YAML
+
+  // Potentially set a global log level here if your logger supports it
+  // For example: logger.setLevel(logLevel || 'info');
+  if (logLevel && logger.setLevel) { // Assuming logger has a setLevel method
+    logger.setLevel(logLevel);
+  } else if (debugMode && logger.setLevel) { // Fallback to debugMode for logger
+    logger.setLevel('debug');
+  }
+
 
   // 3. Process Extensions from YAML (if any)
   const loadedExtensions: Extension[] = [];
@@ -432,12 +459,14 @@ export async function loadCliConfig(sessionId: string): Promise<Config> {
   const telemetryLogPrompts = argv.telemetryLogPrompts ?? process.env.GEMINI_TELEMETRY_LOG_PROMPTS?.toLowerCase() === 'true' ?? mergedYamlConfig.telemetry?.logPrompts ?? true;
 
   // Final config object construction
+  // TODO: Pass logLevel to Core Config if it supports it, or handle logging configuration here.
+  // For now, debugMode is passed, and logLevel is used locally if the logger supports it.
   return new Config({
     sessionId,
     embeddingModel: mergedYamlConfig.embeddingModel || DEFAULT_GEMINI_EMBEDDING_MODEL, // Assuming embeddingModel can be in YAML
     sandbox: sandboxConfig,
     targetDir: process.cwd(),
-    debugMode,
+    debugMode, // This is passed to the core Config
     question: argv.prompt || '',
     fullContext: argv.all_files || false, // No direct YAML equivalent assumed for fullContext
     coreTools: mergedYamlConfig.coreTools || undefined,

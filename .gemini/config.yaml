@@ -1,10 +1,26 @@
-have_fun: false
-code_review:
-  disable: false
-  comment_severity_threshold: HIGH
-  max_review_comments: -1
-  pull_request_opened:
-    help: false
-    summary: true
-    code_review: true
-ignore_patterns: []
+# Test workspace config
+llmProvider: "openrouter" # Set default provider to OpenRouter
+
+# Configure OpenRouter to use .env variables
+openRouter:
+  apiKey: "$OPENROUTER_API_KEY"
+  model: "$OPENROUTER_DEFAULT_MODEL" # Reference the model from .env
+
+# Configure Azure to use .env variables
+azure:
+  apiKey: "$AZURE_API_KEY"
+  apiBase: "$AZURE_API_BASE"
+  apiVersion: "2023-08-01-preview" # Dummy version
+
+model: "general/fallback-model-in-config"
+
+# Enable debug logging
+debugMode: true # Corrected to debugMode
+logLevel: "debug" # Added for CLI logger
+
+telemetry:
+  enabled: false
+  logPrompts: false
+usageStatisticsEnabled: false
+
+customTestSetting: "config-yaml-was-loaded"
