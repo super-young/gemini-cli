@@ -11,7 +11,9 @@ import { themeManager, DEFAULT_THEME } from '../themes/theme-manager.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
 import { DiffRenderer } from './messages/DiffRenderer.js';
 import { colorizeCode } from '../utils/CodeColorizer.js';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
+// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+import { type Config } from '@super-young/gemini-cli-core'; // ADDED & SCOPE CHANGED
+import { SettingScope } from '../types.js'; // CORRECTED Path
 
 interface ThemeDialogProps {
   /** Callback function when a theme is selected */
@@ -19,8 +21,8 @@ interface ThemeDialogProps {
 
   /** Callback function when a theme is highlighted */
   onHighlight: (themeName: string | undefined) => void;
-  /** The settings object */
-  settings: LoadedSettings;
+  /** The new config object */
+  config: Config; // CHANGED from settings: LoadedSettings
   availableTerminalHeight?: number;
   terminalWidth: number;
 }
@@ -28,7 +30,7 @@ interface ThemeDialogProps {
 export function ThemeDialog({
   onSelect,
   onHighlight,
-  settings,
+  config, // CHANGED from settings
   availableTerminalHeight,
   terminalWidth,
 }: ThemeDialogProps): React.JSX.Element {
@@ -38,6 +40,7 @@ export function ThemeDialog({
 
   // Generate theme items
   const themeItems = themeManager.getAvailableThemes().map((theme) => {
+    // TODO: Update how theme is retrieved from config instead of settings.merged.theme
     const typeString = theme.type.charAt(0).toUpperCase() + theme.type.slice(1);
     return {
       label: theme.name,

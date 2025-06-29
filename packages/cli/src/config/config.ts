@@ -333,7 +333,7 @@ export async function loadHierarchicalGeminiMemory(
 }
 
 // Primary function to load all configurations
-export async function loadCliConfig(sessionId: string): Promise<Config> {
+export async function loadCliConfig(sessionId: string): Promise<{config: Config, yamlConfig: Partial<ConfigYaml>}> {
   loadEnvironment(); // Load .env file first
 
   // 1. Load YAML configurations
@@ -507,6 +507,8 @@ export async function loadCliConfig(sessionId: string): Promise<Config> {
     openRouterApiKey: argv.openrouterApiKey || undefined, // Already incorporates YAML default, ensure undefined if empty
     generationConfig: mergedYamlConfig.generationConfig, // From YAML
   });
+
+  return { config: newConfig, yamlConfig: mergedYamlConfig };
 }
 
 // Removed mergeMcpServers as its logic is now within loadCliConfig

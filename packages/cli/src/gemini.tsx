@@ -21,6 +21,7 @@ import { runNonInteractive } from './nonInteractiveCli.js';
 // import { loadExtensions, Extension } from './config/extension.js'; // REMOVED - Extension type might be imported if needed by nonInteractive
 import { cleanupCheckpoints } from './utils/cleanup.js';
 import {
+  logger,
   ApprovalMode,
   Config,
   EditTool,
@@ -96,16 +97,16 @@ export async function main() {
   // and result in empty/partial config, which might lead to downstream issues
   // if critical configs are missing. This might need more robust error handling
   // if a completely invalid YAML should halt execution.
-  const config = await loadCliConfig(sessionId);
+  const { config, yamlConfig } = await loadCliConfig(sessionId);
 
   // Extract a subset of config that mirrors old settings.merged for convenience in this file
   // This helps minimize changes in `main` logic initially.
   // TODO: Refactor main to use `config.get...()` methods more directly.
   const mergedConfigSubset: MergedConfigSubset = {
-    selectedAuthType: config.getSelectedAuthType ? config.getSelectedAuthType() : undefined, // Assuming a getter might exist or be added
-    theme: config.getTheme ? config.getTheme() : undefined, // Assuming a getter
-    autoConfigureMaxOldSpaceSize: config.getAutoConfigureMaxOldSpaceSize ? config.getAutoConfigureMaxOldSpaceSize() : true, // Assuming getter
-    hideWindowTitle: config.getHideWindowTitle ? config.getHideWindowTitle() : false, // Assuming getter
+    selectedAuthType: yamlConfig.selectedAuthType,
+    theme: yamlConfig.theme,
+    autoConfigureMaxOldSpaceSize: yamlConfig.autoConfigureMaxOldSpaceSize ?? true,
+    hideWindowTitle: yamlConfig.hideWindowTitle ?? false,
     excludeTools: config.getExcludeTools() || [],
   };
 

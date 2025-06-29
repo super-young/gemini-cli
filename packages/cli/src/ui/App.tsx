@@ -35,7 +35,7 @@ import { Footer } from './components/Footer.js';
 import { ThemeDialog } from './components/ThemeDialog.js';
 import { AuthDialog } from './components/AuthDialog.js';
 import { AuthInProgress } from './components/AuthInProgress.js';
-import { EditorSettingsDialog } from './components/EditorSettingsDialog.js';
+import { EditorSettingsDialog }.js';
 import { Colors } from './colors.js';
 import { Help } from './components/Help.js';
 import { loadHierarchicalGeminiMemory } from '../config/config.js';
@@ -54,7 +54,7 @@ import {
   ApprovalMode,
   isEditorAvailable,
   EditorType,
-} from '@google/gemini-cli-core';
+} from '@super-young/gemini-cli-core';
 import { validateAuthMethod } from '../config/auth.js';
 import { useLogger } from './hooks/useLogger.js';
 import { StreamingContext } from './contexts/StreamingContext.js';
@@ -81,7 +81,7 @@ interface AppProps {
   config: Config;
   // settings: LoadedSettings; // REMOVED - old settings system
   startupWarnings?: string[];
-  // mergedConfigSubset?: MergedConfigSubset; // Will be added if gemini.tsx passes it
+  mergedConfigSubset?: MergedConfigSubset; // Will be added if gemini.tsx passes it
 }
 
 export const AppWrapper = (props: AppProps) => (
@@ -290,7 +290,7 @@ const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
     toggleCorgiMode,
     showToolDescriptions,
     setQuittingMessages,
-    openPrivacyNotice,
+    openPrivacyNotice, // Added this argument
   );
   const pendingHistoryItems = [...pendingSlashCommandHistoryItems];
 

@@ -8,26 +8,28 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { Colors } from '../colors.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
-import { AuthType } from '@google/gemini-cli-core';
+// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+import { AuthType, type Config } from '@super-young/gemini-cli-core'; // Config ADDED & SCOPE CHANGED
 import { validateAuthMethod } from '../../config/auth.js';
+import { SettingScope } from '../types.js'; // CORRECTED Path
 
 interface AuthDialogProps {
   onSelect: (authMethod: string | undefined, scope: SettingScope) => void;
   onHighlight: (authMethod: string | undefined) => void;
-  settings: LoadedSettings;
+  config: Config; // CHANGED from settings: LoadedSettings
   initialErrorMessage?: string | null;
 }
 
 export function AuthDialog({
   onSelect,
   onHighlight,
-  settings,
+  config, // CHANGED from settings
   initialErrorMessage,
 }: AuthDialogProps): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(
     initialErrorMessage || null,
   );
+  // TODO: Update how selectedAuthType is retrieved from config instead of settings.merged.selectedAuthType
   const items = [
     {
       label: 'Login with Google',
