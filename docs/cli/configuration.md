@@ -272,19 +272,106 @@ The CLI automatically loads environment variables from an `.env` file. The loadi
 
 ## LLM Provider Configuration
 
-Gemini CLI allows you to choose different Large Language Model (LLM) providers for generating responses. By default, it uses Google's Gemini models. You can switch to other supported providers like OpenRouter.
+Gemini CLI allows you to choose different Large Language Model (LLM) providers for generating responses.
+
+### Default Provider: Google Gemini
+
+By default, Gemini CLI uses Google's Gemini models.
+- **Authentication**: If you are using a Gemini API key, ensure the `GEMINI_API_KEY` environment variable is set. The CLI will automatically pick it up.
+  ```bash
+  export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+  gemini --prompt "Hello"
+  ```
+- **Model Selection**: You can specify a Gemini model using the `--model` argument (e.g., `gemini --model "gemini-1.5-flash"`) or by setting the `GEMINI_MODEL` environment variable. If not specified, a default Gemini model will be used.
 
 ### Using OpenRouter
 
-[OpenRouter.ai](https://openrouter.ai/) provides access to a variety of LLMs from different developers through a unified API. To use OpenRouter with Gemini CLI:
+[OpenRouter.ai](https://openrouter.ai/) provides access to a variety of LLMs from different developers through a unified API. To use OpenRouter with Gemini CLI, you need to configure three main things: the provider, your API key, and the specific model you want to use.
 
-1.  **Set the LLM Provider**: Use the `--llm-provider openrouter` command-line argument.
-2.  **Provide an API Key**:
-    *   Use the `--openrouter-api-key YOUR_OPENROUTER_KEY` command-line argument, replacing `YOUR_OPENROUTER_KEY` with your actual OpenRouter API key.
-    *   Alternatively, set the `OPENROUTER_API_KEY` environment variable.
-3.  **Specify a Model**: You **must** specify a model compatible with OpenRouter using the `--model "provider/model-name"` argument (e.g., `--model "openai/gpt-4o"` or `--model "anthropic/claude-3-opus"`). Refer to the [OpenRouter documentation](https://openrouter.ai/docs#models) for a list of available models.
+**1. Command-Line Arguments:**
 
-**Example:**
+   You can configure OpenRouter directly via command-line arguments:
+   - **Set the LLM Provider**: Use `--llm-provider openrouter`.
+   - **Provide an API Key**:
+     - Use `--openrouter-api-key YOUR_OPENROUTER_KEY` (replace `YOUR_OPENROUTER_KEY` with your actual key).
+     - Or, set the `OPENROUTER_API_KEY` environment variable.
+   - **Specify a Model**: You **must** specify a model compatible with OpenRouter using the `--model "vendor/model-name"` argument (e.g., `--model "openai/gpt-4o"`, `--model "anthropic/claude-3-opus"`). Refer to the [OpenRouter documentation](https://openrouter.ai/docs#models) for available model strings.
+
+   **Example using CLI arguments:**
+   ```bash
+   gemini --llm-provider openrouter \
+          --model "openai/gpt-4o" \
+          --openrouter-api-key "sk-or-v1-..." \
+          --prompt "Translate 'hello world' to French."
+   ```
+
+   **Example using environment variable for API key:**
+   ```bash
+   export OPENROUTER_API_KEY="sk-or-v1-..."
+   gemini --llm-provider openrouter \
+          --model "openai/gpt-4o" \
+          --prompt "Translate 'hello world' to French."
+   ```
+
+**2. Using `settings.json`:**
+
+   You can also configure OpenRouter in your user or project `settings.json` file (`~/.gemini/settings.json` or `.gemini/settings.json`). This is useful for persistent configuration.
+
+   Add the following properties:
+   - **`llmProvider`**: Set to `"openrouter"`.
+   - **`model`**: Set to the desired OpenRouter model string (e.g., `"openai/gpt-4o"`). This is **required** for OpenRouter.
+   - **`openRouterApiKey`**: Your OpenRouter API key. You can also use environment variable substitution (e.g., `"$OPENROUTER_API_KEY"`).
+
+   **Example `settings.json` for OpenRouter:**
+   ```json
+   {
+     "llmProvider": "openrouter",
+     "model": "anthropic/claude-3-sonnet",
+     "openRouterApiKey": "sk-or-v1-your-api-key-here"
+   }
+   ```
+   Or, using an environment variable for the key within `settings.json`:
+   ```json
+   {
+     "llmProvider": "openrouter",
+     "model": "google/gemini-pro", // OpenRouter also proxies some Gemini models
+     "openRouterApiKey": "$OPENROUTER_API_KEY"
+   }
+   ```
+   With these settings in `settings.json`, you can simply run:
+   ```bash
+   gemini --prompt "Tell me a joke about OpenRouter."
+   ```
+   The CLI will use the OpenRouter configuration from your settings file. Command-line arguments will still override `settings.json` values if provided.
+
+**Important for OpenRouter:**
+- Always ensure `model` is set to a valid OpenRouter model string.
+- Ensure your `openRouterApiKey` (or `OPENROUTER_API_KEY` env var) is correctly set.
+
+---
+
+## Command-Line Arguments
+
+Arguments passed directly when running the CLI can override other configurations for that specific session.
+
+- **`--model <model_name>`** (**`-m <model_name>`**):
+  - Specifies the model to use.
+  - For the default Gemini provider, e.g., `"gemini-1.5-pro-latest"`.
+  - For OpenRouter, this **must** be specified with the provider/model format, e.g., `"openai/gpt-4o"`.
+  - Example: `gemini --model "gemini-1.5-pro-latest"`
+  - Example (OpenRouter): `gemini --llm-provider openrouter --model "openai/gpt-4o"`
+- **`--llm-provider <provider>`**:
+  - Specifies the LLM provider to use.
+  - **Choices**: `gemini`, `openrouter`
+  - **Default**: `gemini`
+  - Example: `gemini --llm-provider openrouter`
+- **`--openrouter-api-key <key>`**:
+  - API key for OpenRouter.ai.
+  - Required if `--llm-provider` is `openrouter` and the `OPENROUTER_API_KEY` environment variable is not set.
+  - Example: `gemini --llm-provider openrouter --openrouter-api-key "sk-or-v1-..."`
+- **`--prompt <your_prompt>`** (**`-p <your_prompt>`**):
+  - Used to pass a prompt directly to the command. This invokes Gemini CLI in a non-interactive mode.
+- **`--sandbox`** (**`-s`**):
 
 ```bash
 gemini --llm-provider openrouter \

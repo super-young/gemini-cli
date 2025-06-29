@@ -212,7 +212,7 @@ export const useShellCommandProcessor = (
   onExec: (command: Promise<void>) => void,
   onDebugMessage: (message: string) => void,
   config: Config,
-  geminiClient: GeminiClient,
+  geminiClient: GeminiClient | null, // Allow null
 ) => {
   const handleShellCommand = useCallback(
     (rawQuery: PartListUnion, abortSignal: AbortSignal): boolean => {
@@ -309,7 +309,13 @@ export const useShellCommandProcessor = (
             );
 
             // Add the same complete, contextual result to the LLM's history.
-            addShellCommandToGeminiHistory(geminiClient, rawQuery, finalOutput);
+            if (geminiClient && geminiClient instanceof GeminiClient) { // Check if it's a valid GeminiClient
+              addShellCommandToGeminiHistory(geminiClient, rawQuery, finalOutput);
+            } else {
+              // TODO: Implement history addition for other LLM services if needed,
+              // or decide if shell history is only for Gemini with current setup.
+              onDebugMessage("Skipping shell command history addition: not using a GeminiClient or client is null.");
+            }
           })
           .catch((err) => {
             setPendingHistoryItem(null);
