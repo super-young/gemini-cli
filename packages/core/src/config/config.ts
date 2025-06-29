@@ -38,8 +38,12 @@ import {
 import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   DEFAULT_GEMINI_FLASH_MODEL,
+  GenerationConfig, // Added for GeminiLLMService
 } from './models.js';
 import { ClearcutLogger } from '../telemetry/clearcut-logger/clearcut-logger.js';
+
+// LLM Provider types
+export type LLMProvider = 'gemini' | 'openrouter';
 
 export enum ApprovalMode {
   DEFAULT = 'default',
@@ -126,6 +130,9 @@ export interface ConfigParameters {
   bugCommand?: BugCommandSettings;
   model: string;
   extensionContextFilePaths?: string[];
+  llmProvider?: LLMProvider; // New field for LLM provider
+  openRouterApiKey?: string; // New field for OpenRouter API key
+  generationConfig?: GenerationConfig; // To store generation config for Gemini
 }
 
 export class Config {
@@ -165,10 +172,16 @@ export class Config {
   private readonly model: string;
   private readonly extensionContextFilePaths: string[];
   private modelSwitchedDuringSession: boolean = false;
+  public readonly llmProvider: LLMProvider; // Made public for factory access
+  public readonly openRouterApiKey?: string; // Made public for factory access
+  public readonly generationConfig?: GenerationConfig; // Made public for GeminiLLMService
   flashFallbackHandler?: FlashFallbackHandler;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
+    this.llmProvider = params.llmProvider || 'gemini'; // Default to gemini
+    this.openRouterApiKey = params.openRouterApiKey;
+    this.generationConfig = params.generationConfig;
     this.embeddingModel =
       params.embeddingModel ?? DEFAULT_GEMINI_EMBEDDING_MODEL;
     this.sandbox = params.sandbox;

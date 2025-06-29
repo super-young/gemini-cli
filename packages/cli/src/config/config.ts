@@ -18,6 +18,7 @@ import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   FileDiscoveryService,
   TelemetryTarget,
+  LLMProvider, // Import LLMProvider
 } from '@google/gemini-cli-core';
 import { Settings } from './settings.js';
 
@@ -53,6 +54,8 @@ interface CliArgs {
   telemetryTarget: string | undefined;
   telemetryOtlpEndpoint: string | undefined;
   telemetryLogPrompts: boolean | undefined;
+  llmProvider: LLMProvider | undefined; // New CLI arg
+  openrouterApiKey: string | undefined; // New CLI arg
 }
 
 async function parseArguments(): Promise<CliArgs> {
@@ -60,8 +63,20 @@ async function parseArguments(): Promise<CliArgs> {
     .option('model', {
       alias: 'm',
       type: 'string',
-      description: `Model`,
-      default: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      description: 'Model to use. For Gemini, e.g., "gemini-pro". For OpenRouter, e.g., "openai/gpt-4o".',
+      default: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL, // Default might change based on provider
+    })
+    .option('llm-provider', {
+      alias: 'lp',
+      type: 'string',
+      choices: ['gemini', 'openrouter'] as const,
+      description: 'The LLM provider to use.',
+      default: 'gemini' as LLMProvider,
+    })
+    .option('openrouter-api-key', {
+      alias: 'oak',
+      type: 'string',
+      description: 'API key for OpenRouter. Required if --llm-provider is openrouter.',
     })
     .option('prompt', {
       alias: 'p',
@@ -132,9 +147,25 @@ async function parseArguments(): Promise<CliArgs> {
     .alias('v', 'version')
     .help()
     .alias('h', 'help')
-    .strict().argv;
+    .strict()
+    .middleware((argv) => {
+      // Validate conditional requirements
+      if (argv.llmProvider === 'openrouter') {
+        if (!argv.openrouterApiKey) {
+          throw new Error('Missing required argument: --openrouter-api-key must be provided when --llm-provider is openrouter.');
+        }
+        // Model is also implicitly required for openrouter, but yargs default might satisfy it.
+        // Add explicit check if model needs a different validation for openrouter.
+        if (!argv.model || argv.model === DEFAULT_GEMINI_MODEL) {
+            // If default Gemini model is still set, and provider is OpenRouter, user likely forgot to set a model.
+            // However, OpenRouter itself has default models if not specified, so this might be too strict.
+            // For now, we'll rely on OpenRouter to error if model is truly invalid for it.
+            // console.warn("[WARN] Ensure the --model is set to a valid OpenRouter model identifier (e.g., 'openai/gpt-4o') when using --llm-provider=openrouter.");
+        }
+      }
+    }).argv;
 
-  return argv;
+  return argv as CliArgs; // Cast because middleware might not perfectly type argv yet for all props
 }
 
 // This function is now a thin wrapper around the server's implementation.
@@ -245,6 +276,9 @@ export async function loadCliConfig(
     bugCommand: settings.bugCommand,
     model: argv.model!,
     extensionContextFilePaths,
+    llmProvider: argv.llmProvider,
+    openRouterApiKey: argv.openrouterApiKey,
+    // generationConfig can be populated from settings if needed
   });
 }
 
