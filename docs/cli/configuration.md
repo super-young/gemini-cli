@@ -4,201 +4,165 @@ Gemini CLI offers several ways to configure its behavior, including environment 
 
 ## Configuration layers
 
-Configuration is applied in the following order of precedence (lower numbers are overridden by higher numbers):
+Configuration is applied in the following order of precedence (higher numbers override lower numbers):
 
 1.  **Default values:** Hardcoded defaults within the application.
-2.  **User settings file:** Global settings for the current user.
-3.  **Project settings file:** Project-specific settings.
-4.  **Environment variables:** System-wide or session-specific variables, potentially loaded from `.env` files.
+2.  **User `config.yaml` file:** Global settings for the current user, located at `~/.gemini/config.yaml`.
+3.  **Workspace `config.yaml` file:** Workspace-specific settings, located at `./.gemini/config.yaml` (relative to the current working directory). Workspace settings override user settings.
+4.  **Environment variables:** System-wide or session-specific variables, potentially loaded from `.env` files (see below).
 5.  **Command-line arguments:** Values passed when launching the CLI.
 
-## The user settings file and project settings file
+## The `config.yaml` file
 
-Gemini CLI uses `settings.json` files for persistent configuration. There are two locations for these files:
+Gemini CLI uses `config.yaml` files for persistent configuration. There are two locations for these files:
 
-- **User settings file:**
-  - **Location:** `~/.gemini/settings.json` (where `~` is your home directory).
+- **User `config.yaml` file:**
+  - **Location:** `~/.gemini/config.yaml` (where `~` is your home directory).
   - **Scope:** Applies to all Gemini CLI sessions for the current user.
-- **Project settings file:**
-  - **Location:** `.gemini/settings.json` within your project's root directory.
-  - **Scope:** Applies only when running Gemini CLI from that specific project. Project settings override user settings.
+- **Workspace `config.yaml` file:**
+  - **Location:** `.gemini/config.yaml` within your project's root directory (or current working directory).
+  - **Scope:** Applies only when running Gemini CLI from that specific workspace. Workspace settings override corresponding user settings.
 
-**Note on environment variables in settings:** String values within your `settings.json` files can reference environment variables using either `$VAR_NAME` or `${VAR_NAME}` syntax. These variables will be automatically resolved when the settings are loaded. For example, if you have an environment variable `MY_API_TOKEN`, you could use it in `settings.json` like this: `"apiKey": "$MY_API_TOKEN"`.
+**Note on environment variables in `config.yaml`:** String values within your `config.yaml` files can reference environment variables using either `$VAR_NAME` or `${VAR_NAME}` syntax. These variables will be automatically resolved when the configuration is loaded. For example, if you have an environment variable `MY_API_TOKEN`, you could use it in `config.yaml` like this: `openRouterApiKey: "$MY_API_TOKEN"`.
 
 ### The `.gemini` directory in your project
 
-In addition to a project settings file, a project's `.gemini` directory can contain other project-specific files related to Gemini CLI's operation, such as:
+In addition to a workspace `config.yaml` file, a project's `.gemini` directory can contain other project-specific files related to Gemini CLI's operation, such as:
 
 - [Custom sandbox profiles](#sandboxing) (e.g., `.gemini/sandbox-macos-custom.sb`, `.gemini/sandbox.Dockerfile`).
+- Context files (e.g., `GEMINI.md`, `AGENTS.md`) if not specified differently by `contextFileName` in `config.yaml`.
 
-### Available settings in `settings.json`:
+### Available settings in `config.yaml`:
 
-- **`contextFileName`** (string or array of strings):
-  - **Description:** Specifies the filename for context files (e.g., `GEMINI.md`, `AGENTS.md`). Can be a single filename or a list of accepted filenames.
-  - **Default:** `GEMINI.md`
-  - **Example:** `"contextFileName": "AGENTS.md"`
+The `config.yaml` file uses YAML syntax. Below is a comprehensive list of available settings. Not all settings need to be present; defaults will be used for missing entries.
 
-- **`bugCommand`** (object):
-  - **Description:** Overrides the default URL for the `/bug` command.
-  - **Default:** `"urlTemplate": "https://github.com/google-gemini/gemini-cli/issues/new?template=bug_report.yml&title={title}&info={info}"`
-  - **Properties:**
-    - **`urlTemplate`** (string): A URL that can contain `{title}` and `{info}` placeholders.
-  - **Example:**
-    ```json
-    "bugCommand": {
-      "urlTemplate": "https://bug.example.com/new?title={title}&info={info}"
-    }
-    ```
+```yaml
+# General settings
+have_fun: false
+theme: 'DefaultDark' # Sets the visual theme. See ./themes.md
+# selectedAuthType: 'oauth-personal' # No longer primary way to set auth, prefer environment variables or provider-specific keys.
+sandbox: false # boolean or string (e.g., 'docker', 'podman'). Controls sandboxing. See Sandboxing section.
+showMemoryUsage: false # If true, shows memory usage in status bar.
+# Specifies the filename for context files (e.g., GEMINI.md, AGENTS.md).
+# Can be a single filename or a list of accepted filenames.
+contextFileName: 'GEMINI.md' # or ['GEMINI.md', 'AGENTS.md']
+accessibility:
+  disableLoadingPhrases: false # Disables animated loading phrases.
+preferredEditor: 'code' # Preferred editor for viewing diffs (e.g., 'vscode', 'vim').
+autoConfigureMaxOldSpaceSize: true # Allow Gemini to attempt to relaunch with more memory if needed.
+hideWindowTitle: false # If true, Gemini CLI will not attempt to set the terminal window title.
 
-- **`fileFiltering`** (object):
-  - **Description:** Controls git-aware file filtering behavior for @ commands and file discovery tools.
-  - **Default:** `"respectGitIgnore": true, "enableRecursiveFileSearch": true`
-  - **Properties:**
-    - **`respectGitIgnore`** (boolean): Whether to respect .gitignore patterns when discovering files. When set to `true`, git-ignored files (like `node_modules/`, `dist/`, `.env`) are automatically excluded from @ commands and file listing operations.
-    - **`enableRecursiveFileSearch`** (boolean): Whether to enable searching recursively for filenames under the current tree when completing @ prefixes in the prompt.
-  - **Example:**
-    ```json
-    "fileFiltering": {
-      "respectGitIgnore": true,
-      "enableRecursiveFileSearch": false
-    }
-    ```
+# Code review settings (for features like automated PR reviews if enabled)
+code_review:
+  disable: false
+  comment_severity_threshold: HIGH # e.g., LOW, MEDIUM, HIGH
+  max_review_comments: -1 # -1 for no limit
+  pull_request_opened:
+    help: false
+    summary: true
+    code_review: true
 
-- **`coreTools`** (array of strings):
-  - **Description:** Allows you to specify a list of core tool names that should be made available to the model. This can be used to restrict the set of built-in tools. See [Built-in Tools](../core/tools-api.md#built-in-tools) for a list of core tools.
-  - **Default:** All tools available for use by the Gemini model.
-  - **Example:** `"coreTools": ["ReadFileTool", "GlobTool", "SearchText"]`.
+# File patterns to ignore for context processing and some tools.
+# Uses .gitignore syntax.
+ignore_patterns:
+  - 'node_modules/'
+  - 'dist/'
+  - '*.log'
 
-- **`excludeTools`** (array of strings):
-  - **Description:** Allows you to specify a list of core tool names that should be excluded from the model. A tool listed in both `excludeTools` and `coreTools` is excluded.
-  - **Default**: No tools excluded.
-  - **Example:** `"excludeTools": ["run_shell_command", "findFiles"]`.
+# Core tools settings
+# List of core tools to enable. If not specified, all default tools are enabled.
+# See Built-in Tools documentation for available tool names.
+# Example: ['LSTool', 'ReadFileTool']
+coreTools: []
+# List of core tools to disable.
+# Example: ['GrepTool']
+excludeTools: []
 
-- **`autoAccept`** (boolean):
-  - **Description:** Controls whether the CLI automatically accepts and executes tool calls that are considered safe (e.g., read-only operations) without explicit user confirmation. If set to `true`, the CLI will bypass the confirmation prompt for tools deemed safe.
-  - **Default:** `false`
-  - **Example:** `"autoAccept": true`
+# Custom tool settings
+# Command to discover custom tools. Must output JSON array of function declarations.
+toolDiscoveryCommand: ''
+# Command to call a custom tool. Takes tool name as arg1, JSON args on stdin.
+toolCallCommand: ''
 
-- **`theme`** (string):
-  - **Description:** Sets the visual [theme](./themes.md) for Gemini CLI.
-  - **Default:** `"Default"`
-  - **Example:** `"theme": "GitHub"`
+# MCP (Multi-Context Prompt) Server settings
+# Command to start a default MCP server if not using keyed mcpServers.
+mcpServerCommand: ''
+# Keyed collection of MCP servers.
+mcpServers:
+  # my_custom_server:
+  #   command: 'node'
+  #   args: ['my_server.js']
+  #   env: { 'MY_VAR': 'value' }
+  #   cwd: '/path/to/server' # Working directory for the server
+  #   url: 'http://localhost:8080' # For SSE transport
+  #   httpUrl: 'http://localhost:8081' # For streamable HTTP transport
+  #   tcp: 'localhost:8082' # For WebSocket transport
+  #   timeout: 5000 # Milliseconds
+  #   trust: false # If true, bypasses tool call confirmations for this server
+  #   description: 'My custom MCP server'
 
-- **`sandbox`** (boolean or string):
-  - **Description:** Controls whether and how to use sandboxing for tool execution. If set to `true`, Gemini CLI uses a pre-built `gemini-cli-sandbox` Docker image. For more information, see [Sandboxing](#sandboxing).
-  - **Default:** `false`
-  - **Example:** `"sandbox": "docker"`
+# Telemetry settings (see Telemetry documentation for details)
+telemetry:
+  enabled: true
+  target: 'local' # 'local' or 'gcp'
+  otlpEndpoint: 'http://localhost:4317' # OTLP endpoint if target is 'gcp' or for custom local collectors
+  logPrompts: true # If false, user prompts will not be logged.
 
-- **`toolDiscoveryCommand`** (string):
-  - **Description:** Defines a custom shell command for discovering tools from your project. The shell command must return on `stdout` a JSON array of [function declarations](https://ai.google.dev/gemini-api/docs/function-calling#function-declarations). Tool wrappers are optional.
-  - **Default:** Empty
-  - **Example:** `"toolDiscoveryCommand": "bin/get_tools"`
+# Usage statistics (separate from detailed telemetry)
+usageStatisticsEnabled: true
 
-- **`toolCallCommand`** (string):
-  - **Description:** Defines a custom shell command for calling a specific tool that was discovered using `toolDiscoveryCommand`. The shell command must meet the following criteria:
-    - It must take function `name` (exactly as in [function declaration](https://ai.google.dev/gemini-api/docs/function-calling#function-declarations)) as first command line argument.
-    - It must read function arguments as JSON on `stdin`, analogous to [`functionCall.args`](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference#functioncall).
-    - It must return function output as JSON on `stdout`, analogous to [`functionResponse.response.content`](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference#functionresponse).
-  - **Default:** Empty
-  - **Example:** `"toolCallCommand": "bin/call_tool"`
+# Bug reporting command
+bugCommand:
+  urlTemplate: 'https://github.com/google/gemini-code-assist/issues/new?template=bug_report.yml&title=[BUG]%20{TITLE}&body={BODY}'
 
-- **`mcpServers`** (object):
-  - **Description:** Configures connections to one or more Model-Context Protocol (MCP) servers for discovering and using custom tools. Gemini CLI attempts to connect to each configured MCP server to discover available tools. If multiple MCP servers expose a tool with the same name, the tool names will be prefixed with the server alias you defined in the configuration (e.g., `serverAlias__actualToolName`) to avoid conflicts. Note that the system might strip certain schema properties from MCP tool definitions for compatibility.
-  - **Default:** Empty
-  - **Properties:**
-    - **`<SERVER_NAME>`** (object): The server parameters for the named server.
-      - `command` (string, required): The command to execute to start the MCP server.
-      - `args` (array of strings, optional): Arguments to pass to the command.
-      - `env` (object, optional): Environment variables to set for the server process.
-      - `cwd` (string, optional): The working directory in which to start the server.
-      - `timeout` (number, optional): Timeout in milliseconds for requests to this MCP server.
-      - `trust` (boolean, optional): Trust this server and bypass all tool call confirmations.
-  - **Example:**
-    ```json
-    "mcpServers": {
-      "myPythonServer": {
-        "command": "python",
-        "args": ["mcp_server.py", "--port", "8080"],
-        "cwd": "./mcp_tools/python",
-        "timeout": 5000
-      },
-      "myNodeServer": {
-        "command": "node",
-        "args": ["mcp_server.js"],
-        "cwd": "./mcp_tools/node"
-      },
-      "myDockerServer": {
-        "command": "docker",
-        "args": ["run", "i", "--rm", "-e", "API_KEY", "ghcr.io/foo/bar"],
-        "env": {
-          "API_KEY": "$MY_API_TOKEN"
-        }
-      },
-    }
-    ```
+# Checkpointing settings (see Checkpointing documentation)
+checkpointing:
+  enabled: false
 
-- **`checkpointing`** (object):
-  - **Description:** Configures the checkpointing feature, which allows you to save and restore conversation and file states. See the [Checkpointing documentation](../checkpointing.md) for more details.
-  - **Default:** `{"enabled": false}`
-  - **Properties:**
-    - **`enabled`** (boolean): When `true`, the `/restore` command is available.
+# Git-aware file filtering
+fileFiltering:
+  respectGitIgnore: true # If true, .gitignore rules are respected by file tools.
+  enableRecursiveFileSearch: true # For @file completions.
 
-- **`preferredEditor`** (string):
-  - **Description:** Specifies the preferred editor to use for viewing diffs.
-  - **Default:** `vscode`
-  - **Example:** `"preferredEditor": "vscode"`
+# LLM Provider Settings
+llmProvider: 'gemini' # 'gemini' or 'openrouter'
+# API key for OpenRouter, if llmProvider is 'openrouter'.
+# Recommended to set via OPENROUTER_API_KEY environment variable for security.
+# Can use $VAR substitution: e.g., "$OPENROUTER_API_KEY"
+openRouterApiKey: ''
+# Default model to use.
+# For Gemini provider: e.g., "gemini-1.5-pro-latest", "gemini-1.0-pro"
+# For OpenRouter provider: e.g., "openai/gpt-4o", "anthropic/claude-3-opus" (MUST be specified for OpenRouter)
+model: 'gemini-1.0-pro' # Example, adjust to your preferred default.
+# Generation Config for Gemini models (see Google AI documentation for GenerationConfig options)
+generationConfig:
+  # temperature: 0.9
+  # topK: 1
+  # topP: 1
+  # maxOutputTokens: 2048
+  # stopSequences: []
 
-- **`telemetry`** (object)
-  - **Description:** Configures logging and metrics collection for Gemini CLI. For more information, see [Telemetry](../telemetry.md).
-  - **Default:** `{"enabled": false, "target": "local", "otlpEndpoint": "http://localhost:4317", "logPrompts": true}`
-  - **Properties:**
-    - **`enabled`** (boolean): Whether or not telemetry is enabled.
-    - **`target`** (string): The destination for collected telemetry. Supported values are `local` and `gcp`.
-    - **`otlpEndpoint`** (string): The endpoint for the OTLP Exporter.
-    - **`logPrompts`** (boolean): Whether or not to include the content of user prompts in the logs.
-  - **Example:**
-    ```json
-    "telemetry": {
-      "enabled": true,
-      "target": "local",
-      "otlpEndpoint": "http://localhost:16686",
-      "logPrompts": false
-    }
-    ```
-- **`usageStatisticsEnabled`** (boolean):
-  - **Description:** Enables or disables the collection of usage statistics. See [Usage Statistics](#usage-statistics) for more information.
-  - **Default:** `true`
-  - **Example:**
-    ```json
-    "usageStatisticsEnabled": false
-    ```
+# Extensions configuration
+# This section holds configurations for any installed/managed extensions.
+# The structure here mirrors how extensions would define their configuration.
+extensions: {}
+  # Example for an extension named 'my-custom-extension':
+  # my-custom-extension:
+  #   name: 'my-custom-extension' # Should match the key
+  #   version: '1.0.0'
+  #   # MCP servers specific to this extension
+  #   mcpServers:
+  #     ext_server_1:
+  #       command: 'npm'
+  #       args: ['run', 'start-ext-server']
+  #       cwd: 'path/to/extension/src' # Path resolution depends on extension system
+  #   # Context files for this extension. Paths are typically relative to workspace
+  #   # or a defined extension directory.
+  #   contextFileName: ['README.md', 'EXTENSION_CONTEXT.md']
 
-### Example `settings.json`:
-
-```json
-{
-  "theme": "GitHub",
-  "sandbox": "docker",
-  "toolDiscoveryCommand": "bin/get_tools",
-  "toolCallCommand": "bin/call_tool",
-  "mcpServers": {
-    "mainServer": {
-      "command": "bin/mcp_server.py"
-    },
-    "anotherServer": {
-      "command": "node",
-      "args": ["mcp_server.js", "--verbose"]
-    }
-  },
-  "telemetry": {
-    "enabled": true,
-    "target": "local",
-    "otlpEndpoint": "http://localhost:4317",
-    "logPrompts": true
-  },
-  "usageStatisticsEnabled": true
-}
 ```
+
+Many of these settings correspond to command-line arguments and environment variables, which can override the values in `config.yaml`.
 
 ## Shell History
 
@@ -293,66 +257,65 @@ By default, Gemini CLI uses Google's Gemini models.
    You can configure OpenRouter directly via command-line arguments:
    - **Set the LLM Provider**: Use `--llm-provider openrouter`.
    - **Provide an API Key**:
-     - Use `--openrouter-api-key YOUR_OPENROUTER_KEY` (replace `YOUR_OPENROUTER_KEY` with your actual key).
-     - Or, set the `OPENROUTER_API_KEY` environment variable.
-   - **Specify a Model**: You **must** specify a model compatible with OpenRouter using the `--model "vendor/model-name"` argument (e.g., `--model "openai/gpt-4o"`, `--model "anthropic/claude-3-opus"`). Refer to the [OpenRouter documentation](https://openrouter.ai/docs#models) for available model strings.
+     - Use `--openrouter-api-key YOUR_OPENROUTER_KEY` (replace `YOUR_OPENROUTER_KEY` with your actual key). This will override any key set in `config.yaml` or environment variables for this session.
+     - Or, set the `OPENROUTER_API_KEY` environment variable (overrides `config.yaml`).
+     - Or, set `openRouterApiKey` in `config.yaml`.
+   - **Specify a Model**: You **must** specify a model compatible with OpenRouter using the `--model "vendor/model-name"` argument (e.g., `--model "openai/gpt-4o"`, `--model "anthropic/claude-3-opus"`). This overrides `model` in `config.yaml`. Refer to the [OpenRouter documentation](https://openrouter.ai/docs#models) for available model strings.
 
-   **Example using CLI arguments:**
+   **Example using CLI arguments (overriding other sources):**
    ```bash
    gemini --llm-provider openrouter \
           --model "openai/gpt-4o" \
-          --openrouter-api-key "sk-or-v1-..." \
+          --openrouter-api-key "sk-or-v1-cli-provided-key" \
           --prompt "Translate 'hello world' to French."
    ```
 
-   **Example using environment variable for API key:**
+   **Example using environment variable for API key (overrides `config.yaml`):**
    ```bash
-   export OPENROUTER_API_KEY="sk-or-v1-..."
+   export OPENROUTER_API_KEY="sk-or-v1-env-var-key"
    gemini --llm-provider openrouter \
           --model "openai/gpt-4o" \
           --prompt "Translate 'hello world' to French."
    ```
 
-**2. Using `settings.json`:**
+**2. Using `config.yaml`:**
 
-   You can also configure OpenRouter in your user or project `settings.json` file (`~/.gemini/settings.json` or `.gemini/settings.json`). This is useful for persistent configuration.
+   You can configure OpenRouter in your user or workspace `config.yaml` file (`~/.gemini/config.yaml` or `./.gemini/config.yaml`). This is useful for persistent configuration.
 
-   Add the following properties:
-   - **`llmProvider`**: Set to `"openrouter"`.
-   - **`model`**: Set to the desired OpenRouter model string (e.g., `"openai/gpt-4o"`). This is **required** for OpenRouter.
+   Set the following keys in your `config.yaml`:
+   - **`llmProvider`**: Set to `openrouter`.
+   - **`model`**: Set to the desired OpenRouter model string (e.g., `"openai/gpt-4o"`). This is **required** when `llmProvider` is `openrouter`.
    - **`openRouterApiKey`**: Your OpenRouter API key. You can also use environment variable substitution (e.g., `"$OPENROUTER_API_KEY"`).
 
-   **Example `settings.json` for OpenRouter:**
-   ```json
-   {
-     "llmProvider": "openrouter",
-     "model": "anthropic/claude-3-sonnet",
-     "openRouterApiKey": "sk-or-v1-your-api-key-here"
-   }
+   **Example `config.yaml` for OpenRouter:**
+   ```yaml
+   llmProvider: 'openrouter'
+   model: 'anthropic/claude-3-sonnet'
+   openRouterApiKey: 'sk-or-v1-your-api-key-here'
+   # ... other settings
    ```
-   Or, using an environment variable for the key within `settings.json`:
-   ```json
-   {
-     "llmProvider": "openrouter",
-     "model": "google/gemini-pro", // OpenRouter also proxies some Gemini models
-     "openRouterApiKey": "$OPENROUTER_API_KEY"
-   }
+   Or, using an environment variable for the key within `config.yaml`:
+   ```yaml
+   llmProvider: 'openrouter'
+   model: 'google/gemini-pro' # OpenRouter also proxies some Gemini models
+   openRouterApiKey: '$OPENROUTER_API_KEY' # Will be replaced by the env var value
+   # ... other settings
    ```
-   With these settings in `settings.json`, you can simply run:
+   With these settings in `config.yaml`, you can simply run:
    ```bash
    gemini --prompt "Tell me a joke about OpenRouter."
    ```
-   The CLI will use the OpenRouter configuration from your settings file. Command-line arguments will still override `settings.json` values if provided.
+   The CLI will use the OpenRouter configuration from your `config.yaml` file. Command-line arguments and environment variables will still override `config.yaml` values if provided, following the precedence rules.
 
 **Important for OpenRouter:**
-- Always ensure `model` is set to a valid OpenRouter model string.
-- Ensure your `openRouterApiKey` (or `OPENROUTER_API_KEY` env var) is correctly set.
+- Always ensure `model` is set to a valid OpenRouter model string (either via CLI argument or in `config.yaml`).
+- Ensure your `openRouterApiKey` (via CLI, env var `OPENROUTER_API_KEY`, or `config.yaml`) is correctly set.
 
 ---
 
 ## Command-Line Arguments
 
-Arguments passed directly when running the CLI can override other configurations for that specific session.
+Arguments passed directly when running the CLI have the highest precedence and override settings from environment variables and `config.yaml` files.
 
 - **`--model <model_name>`** (**`-m <model_name>`**):
   - Specifies the model to use.
@@ -363,80 +326,39 @@ Arguments passed directly when running the CLI can override other configurations
 - **`--llm-provider <provider>`**:
   - Specifies the LLM provider to use.
   - **Choices**: `gemini`, `openrouter`
-  - **Default**: `gemini`
+  - **Default**: `gemini` (or as set in `config.yaml`)
   - Example: `gemini --llm-provider openrouter`
 - **`--openrouter-api-key <key>`**:
   - API key for OpenRouter.ai.
-  - Required if `--llm-provider` is `openrouter` and the `OPENROUTER_API_KEY` environment variable is not set.
+  - Required if `--llm-provider` is `openrouter` and the key is not set via `OPENROUTER_API_KEY` environment variable or in `config.yaml`.
   - Example: `gemini --llm-provider openrouter --openrouter-api-key "sk-or-v1-..."`
 - **`--prompt <your_prompt>`** (**`-p <your_prompt>`**):
   - Used to pass a prompt directly to the command. This invokes Gemini CLI in a non-interactive mode.
 - **`--sandbox`** (**`-s`**):
-
-```bash
-gemini --llm-provider openrouter \
-       --model "openai/gpt-4o" \
-       --openrouter-api-key "sk-or-v1-..." \
-       --prompt "Translate 'hello world' to French."
-```
-
-Or using environment variables:
-
-```bash
-export OPENROUTER_API_KEY="sk-or-v1-..."
-gemini --llm-provider openrouter \
-       --model "openai/gpt-4o" \
-       --prompt "Translate 'hello world' to French."
-```
-
----
-
-## Command-Line Arguments
-
-Arguments passed directly when running the CLI can override other configurations for that specific session.
-
-- **`--model <model_name>`** (**`-m <model_name>`**):
-  - Specifies the model to use.
-  - For the default Gemini provider, e.g., `"gemini-1.5-pro-latest"`.
-  - For OpenRouter, this **must** be specified with the provider/model format, e.g., `"openai/gpt-4o"`.
-  - Example: `gemini --model "gemini-1.5-pro-latest"`
-  - Example (OpenRouter): `gemini --llm-provider openrouter --model "openai/gpt-4o"`
-- **`--llm-provider <provider>`**:
-  - Specifies the LLM provider to use.
-  - **Choices**: `gemini`, `openrouter`
-  - **Default**: `gemini`
-  - Example: `gemini --llm-provider openrouter`
-- **`--openrouter-api-key <key>`**:
-  - API key for OpenRouter.ai.
-  - Required if `--llm-provider` is `openrouter` and the `OPENROUTER_API_KEY` environment variable is not set.
-  - Example: `gemini --llm-provider openrouter --openrouter-api-key "sk-or-v1-..."`
-- **`--prompt <your_prompt>`** (**`-p <your_prompt>`**):
-  - Used to pass a prompt directly to the command. This invokes Gemini CLI in a non-interactive mode.
-- **`--sandbox`** (**`-s`**):
-  - Enables sandbox mode for this session.
-- **`--sandbox-image`**:
-  - Sets the sandbox image URI.
-- **`--debug_mode`** (**`-d`**):
+  - Enables sandbox mode for this session. Overrides `sandbox` setting in `config.yaml`.
+- **`--sandbox-image <uri>`**:
+  - Sets the sandbox image URI. Overrides `sandbox.image` from `config.yaml` if sandbox is specified as an object there.
+- **`--debug`** (**`-d`**): (Note: a previous version of this doc incorrectly listed `--debug_mode`)
   - Enables debug mode for this session, providing more verbose output.
 - **`--all_files`** (**`-a`**):
   - If set, recursively includes all files within the current directory as context for the prompt.
 - **`--help`** (or **`-h`**):
   - Displays help information about command-line arguments.
 - **`--show_memory_usage`**:
-  - Displays the current memory usage.
-- **`--yolo`**:
+  - Displays the current memory usage. Overrides `showMemoryUsage` in `config.yaml`.
+- **`--yolo`** (**`-y`**):
   - Enables YOLO mode, which automatically approves all tool calls.
-- **`--telemetry`**:
-  - Enables [telemetry](../telemetry.md).
-- **`--telemetry-target`**:
-  - Sets the telemetry target. See [telemetry](../telemetry.md) for more information.
-- **`--telemetry-otlp-endpoint`**:
-  - Sets the OTLP endpoint for telemetry. See [telemetry](../telemetry.md) for more information.
-- **`--telemetry-log-prompts`**:
-  - Enables logging of prompts for telemetry. See [telemetry](../telemetry.md) for more information.
-- **`--checkpointing`**:
-  - Enables [checkpointing](./commands.md#checkpointing-commands).
-- **`--version`**:
+- **`--telemetry <boolean>`**:
+  - Explicitly enables or disables [telemetry](../telemetry.md) for this session. Overrides `telemetry.enabled` in `config.yaml`.
+- **`--telemetry-target <target>`**:
+  - Sets the telemetry target (e.g., `local`, `gcp`). Overrides `telemetry.target` in `config.yaml`. See [telemetry](../telemetry.md) for more information.
+- **`--telemetry-otlp-endpoint <endpoint>`**:
+  - Sets the OTLP endpoint for telemetry. Overrides `telemetry.otlpEndpoint` in `config.yaml`. See [telemetry](../telemetry.md) for more information.
+- **`--telemetry-log-prompts <boolean>`**:
+  - Enables or disables logging of prompts for telemetry for this session. Overrides `telemetry.logPrompts` in `config.yaml`. See [telemetry](../telemetry.md) for more information.
+- **`--checkpointing <boolean>`**:
+  - Explicitly enables or disables [checkpointing](./commands.md#checkpointing-commands) for this session. Overrides `checkpointing.enabled` in `config.yaml`.
+- **`--version`** (**`-v`**):
   - Displays the version of the CLI.
 
 ## Context Files (Hierarchical Instructional Context)
@@ -545,10 +467,9 @@ To help us improve the Gemini CLI, we collect anonymized usage statistics. This 
 
 **How to opt out:**
 
-You can opt out of usage statistics collection at any time by setting the `usageStatisticsEnabled` property to `false` in your `settings.json` file:
+You can opt out of usage statistics collection at any time by setting the `usageStatisticsEnabled` key to `false` in your `config.yaml` file:
 
-```json
-{
-  "usageStatisticsEnabled": false
-}
+```yaml
+# In ~/.gemini/config.yaml or ./.gemini/config.yaml
+usageStatisticsEnabled: false
 ```
