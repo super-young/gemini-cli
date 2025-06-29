@@ -80,7 +80,7 @@ interface CliArgs {
 
 // Define the structure of our config.yaml content
 // This is based on the previous 'Settings' interface and the new YAML structure plan
-interface ConfigYaml {
+export interface ConfigYaml { // Added export
   have_fun?: boolean;
   theme?: string;
   selectedAuthType?: AuthType;

@@ -8,7 +8,7 @@ import { SandboxConfig } from '@google/gemini-cli-core';
 import commandExists from 'command-exists';
 import * as os from 'node:os';
 import { getPackageJson } from '../utils/package.js';
-import { Settings } from './settings.js';
+import type { ConfigYaml } from './config.js'; // Import the ConfigYaml interface
 
 // This is a stripped-down version of the CliArgs interface from config.ts
 // to avoid circular dependencies.
@@ -91,7 +91,7 @@ function getSandboxCommand(
 }
 
 export async function loadSandboxConfig(
-  settings: Settings,
+  settings: Partial<ConfigYaml>, // Changed type from Settings to Partial<ConfigYaml>
   argv: SandboxCliArgs,
 ): Promise<SandboxConfig | undefined> {
   const sandboxOption = argv.sandbox ?? settings.sandbox;

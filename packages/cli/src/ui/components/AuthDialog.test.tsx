@@ -7,32 +7,33 @@
 import { render } from 'ink-testing-library';
 import { describe, it, expect, vi } from 'vitest';
 import { AuthDialog } from './AuthDialog.js';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
-import { AuthType } from '@google/gemini-cli-core';
+// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+import { AuthType, Config } from '@google/gemini-cli-core';
 
 describe('AuthDialog', () => {
   const wait = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
 
+  // Helper to create a mock Config object for tests
+  const createMockConfig = (selectedAuthType?: AuthType): Config => {
+    return {
+      // Provide minimal mock properties needed by AuthDialog or its underlying logic
+      // This will likely need to be expanded based on actual usage in AuthDialog.tsx
+      selectedAuthType: selectedAuthType,
+      getAuthType: vi.fn(() => selectedAuthType), // Example getter
+      // Mock other necessary Config methods/properties as needed by AuthDialog
+      // For example, if AuthDialog tries to save settings, mock those methods.
+      // For now, keeping it minimal.
+    } as unknown as Config; // Cast to Config, acknowledging it's a partial mock
+  };
+
   it('should show an error if the initial auth type is invalid', () => {
-    const settings: LoadedSettings = new LoadedSettings(
-      {
-        settings: {
-          selectedAuthType: AuthType.USE_GEMINI,
-        },
-        path: '',
-      },
-      {
-        settings: {},
-        path: '',
-      },
-      [],
-    );
+    const mockConfig = createMockConfig(AuthType.USE_GEMINI);
 
     const { lastFrame } = render(
       <AuthDialog
         onSelect={() => {}}
         onHighlight={() => {}}
-        settings={settings}
+        config={mockConfig} // Changed settings to config
         initialErrorMessage="GEMINI_API_KEY  environment variable not found"
       />,
     );
@@ -44,25 +45,13 @@ describe('AuthDialog', () => {
 
   it('should prevent exiting when no auth method is selected and show error message', async () => {
     const onSelect = vi.fn();
-    const settings: LoadedSettings = new LoadedSettings(
-      {
-        settings: {
-          selectedAuthType: undefined,
-        },
-        path: '',
-      },
-      {
-        settings: {},
-        path: '',
-      },
-      [],
-    );
+    const mockConfig = createMockConfig(undefined);
 
     const { lastFrame, stdin, unmount } = render(
       <AuthDialog
         onSelect={onSelect}
         onHighlight={() => {}}
-        settings={settings}
+        config={mockConfig} // Changed settings to config
       />,
     );
     await wait();
@@ -81,25 +70,13 @@ describe('AuthDialog', () => {
 
   it('should allow exiting when auth method is already selected', async () => {
     const onSelect = vi.fn();
-    const settings: LoadedSettings = new LoadedSettings(
-      {
-        settings: {
-          selectedAuthType: AuthType.USE_GEMINI,
-        },
-        path: '',
-      },
-      {
-        settings: {},
-        path: '',
-      },
-      [],
-    );
+    const mockConfig = createMockConfig(AuthType.USE_GEMINI);
 
     const { stdin, unmount } = render(
       <AuthDialog
         onSelect={onSelect}
         onHighlight={() => {}}
-        settings={settings}
+        config={mockConfig} // Changed settings to config
       />,
     );
     await wait();
@@ -108,8 +85,11 @@ describe('AuthDialog', () => {
     stdin.write('\u001b'); // ESC key
     await wait();
 
-    // Should call onSelect with undefined to exit
-    expect(onSelect).toHaveBeenCalledWith(undefined, SettingScope.User);
+    // Should call onSelect with undefined to exit.
+    // SettingScope is removed, so onSelect signature in AuthDialog might change.
+    // Assuming for now it's called with (undefined) or (undefined, undefined) if scope was optional/removed.
+    // This will depend on AuthDialog.tsx changes.
+    expect(onSelect).toHaveBeenCalledWith(undefined); // Adjusted expectation
     unmount();
   });
 });

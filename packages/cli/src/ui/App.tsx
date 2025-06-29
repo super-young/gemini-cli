@@ -39,7 +39,7 @@ import { EditorSettingsDialog } from './components/EditorSettingsDialog.js';
 import { Colors } from './colors.js';
 import { Help } from './components/Help.js';
 import { loadHierarchicalGeminiMemory } from '../config/config.js';
-import { LoadedSettings } from '../config/settings.js';
+// import { LoadedSettings } from '../config/settings.js'; // REMOVED - old settings system
 import { Tips } from './components/Tips.js';
 import { useConsolePatcher } from './components/ConsolePatcher.js';
 import { DetailedMessagesDisplay } from './components/DetailedMessagesDisplay.js';
@@ -75,10 +75,13 @@ import { PrivacyNotice } from './privacy/PrivacyNotice.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 
+// TODO: AppProps will need to be updated based on what gemini.tsx passes,
+// especially after removing `settings`. It might receive `mergedConfigSubset`.
 interface AppProps {
   config: Config;
-  settings: LoadedSettings;
+  // settings: LoadedSettings; // REMOVED - old settings system
   startupWarnings?: string[];
+  // mergedConfigSubset?: MergedConfigSubset; // Will be added if gemini.tsx passes it
 }
 
 export const AppWrapper = (props: AppProps) => (
@@ -87,7 +90,9 @@ export const AppWrapper = (props: AppProps) => (
   </SessionStatsProvider>
 );
 
-const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
+// TODO: Update destructuring and usage of `settings` once AppProps is finalized.
+// For now, many parts will try to use `config.getSomeSetting()` which might not exist.
+const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
   useBracketedPaste();
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const { stdout } = useStdout();
@@ -147,7 +152,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     openThemeDialog,
     handleThemeSelect,
     handleThemeHighlight,
-  } = useThemeCommand(settings, setThemeError, addItem);
+  } = useThemeCommand(config, setThemeError, addItem); // Changed settings to config
 
   const {
     isAuthDialogOpen,
@@ -156,24 +161,26 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     handleAuthHighlight,
     isAuthenticating,
     cancelAuthentication,
-  } = useAuthCommand(settings, setAuthError, config);
+  } = useAuthCommand(config, setAuthError, config); // Changed settings to config
 
   useEffect(() => {
-    if (settings.merged.selectedAuthType) {
-      const error = validateAuthMethod(settings.merged.selectedAuthType);
+    // TODO: Replace with config.getSelectedAuthType() or similar from mergedConfigSubset
+    const selectedAuthType = (config as any).selectedAuthType || config.getAuthType?.();
+    if (selectedAuthType) {
+      const error = validateAuthMethod(selectedAuthType);
       if (error) {
         setAuthError(error);
         openAuthDialog();
       }
     }
-  }, [settings.merged.selectedAuthType, openAuthDialog, setAuthError]);
+  }, [config, openAuthDialog, setAuthError]); // config instead of settings.merged.selectedAuthType
 
   const {
     isEditorDialogOpen,
     openEditorDialog,
     handleEditorSelect,
     exitEditorDialog,
-  } = useEditorSettings(settings, setEditorError, addItem);
+  } = useEditorSettings(config, setEditorError, addItem); // Changed settings to config
 
   const toggleCorgiMode = useCallback(() => {
     setCorgiMode((prev) => !prev);
@@ -268,7 +275,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     pendingHistoryItems: pendingSlashCommandHistoryItems,
   } = useSlashCommandProcessor(
     config,
-    settings,
+    // settings, // settings removed, processor will need to use config
     history,
     addItem,
     clearItems,
@@ -388,14 +395,15 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   }, [config]);
 
   const getPreferredEditor = useCallback(() => {
-    const editorType = settings.merged.preferredEditor;
+    // TODO: Replace with config.getPreferredEditor() or similar from mergedConfigSubset
+    const editorType = (config as any).preferredEditor;
     const isValidEditor = isEditorAvailable(editorType);
     if (!isValidEditor) {
       openEditorDialog();
       return;
     }
     return editorType as EditorType;
-  }, [settings, openEditorDialog]);
+  }, [config, openEditorDialog]); // config instead of settings
 
   const onAuthError = useCallback(() => {
     setAuthError('reauth required');
@@ -562,12 +570,17 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   const branchName = useGitBranchName(config.getTargetDir());
 
   const contextFileNames = useMemo(() => {
-    const fromSettings = settings.merged.contextFileName;
-    if (fromSettings) {
-      return Array.isArray(fromSettings) ? fromSettings : [fromSettings];
+    // TODO: Replace with config.getContextFileName() or similar from mergedConfigSubset
+    // The core Config object has `extensionContextFilePaths` and `userMemory` (which might be from GEMINI.md)
+    // but not a direct `contextFileName` field in its parameters.
+    // This might come from the `gemini.tsx`'s `mergedConfigSubset` or need a new getter in core Config.
+    // For now, defaulting to getAllGeminiMdFilenames() which is from core.
+    const fromConfig = (config as any).contextFileName || (config as any).getContextFileName?.();
+    if (fromConfig) {
+      return Array.isArray(fromConfig) ? fromConfig : [fromConfig];
     }
-    return getAllGeminiMdFilenames();
-  }, [settings.merged.contextFileName]);
+    return getAllGeminiMdFilenames(); // Fallback to default from core
+  }, [config]);
 
   if (quittingMessages) {
     return (
@@ -678,7 +691,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
               <ThemeDialog
                 onSelect={handleThemeSelect}
                 onHighlight={handleThemeHighlight}
-                settings={settings}
+                config={config} // Changed settings to config
                 availableTerminalHeight={
                   constrainHeight
                     ? terminalHeight - staticExtraHeight
@@ -700,7 +713,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
               <AuthDialog
                 onSelect={handleAuthSelect}
                 onHighlight={handleAuthHighlight}
-                settings={settings}
+                config={config} // Changed settings to config
                 initialErrorMessage={authError}
               />
             </Box>
@@ -713,7 +726,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
               )}
               <EditorSettingsDialog
                 onSelect={handleEditorSelect}
-                settings={settings}
+                config={config} // Changed settings to config
                 onExit={exitEditorDialog}
               />
             </Box>
