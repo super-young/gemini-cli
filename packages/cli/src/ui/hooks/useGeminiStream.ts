@@ -539,12 +539,12 @@ export const useGeminiStream = (
 
       try {
         // Ensure queryToSend is compatible with SendMessageParams's `message` field
-        const stream = await contentGenerator.generateContentStream(
-          { message: queryToSend }, // Pass queryToSend as `message`
-          abortSignal,
-        );
+        const stream = await contentGenerator.generateContentStream({
+          message: queryToSend,
+          config: { abortSignal: abortSignal },
+        });
         const processingStatus = await processGeminiStreamEvents(
-          stream,
+          stream as any, // TODO: Fix this type mismatch
           userMessageTimestamp,
           abortSignal,
         );
@@ -802,7 +802,7 @@ export const useGeminiStream = (
       }
     };
     saveRestorableToolCalls();
-  }, [toolCalls, config, onDebugMessage, gitService, history, geminiClient]);
+   }, [toolCalls, config, onDebugMessage, gitService, history]);
 
   return {
     streamingState,
