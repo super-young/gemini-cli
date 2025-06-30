@@ -12,7 +12,7 @@ import {
   ResponseMessageChunk,
   SendMessageParams,
 } from './llm_service.js';
-import { fetch, Agent, RequestInfo, RequestInit, Response } from 'undici';
+// Removed undici import, relying on global fetch
 import { Part, GenerateContentResponseUsageMetadata } from '@google/genai'; // Added GenerateContentResponseUsageMetadata
 import { streamToJson } from '../../utils/streamToJson.js'; // Utility to parse NDJSON stream
 import {
@@ -73,7 +73,7 @@ interface OpenRouterResponse {
  */
 export class OpenRouterLLMService implements LLMService {
   private apiKey: string;
-  private httpClient: Agent; // undici Agent for potential connection pooling, keep-alive
+  // private httpClient: Agent; // Removed undici Agent
 
   constructor(
     private readonly config: Config,
@@ -83,10 +83,10 @@ export class OpenRouterLLMService implements LLMService {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key is not available.');
     }
-    this.httpClient = new Agent({
-      // TODO: Configure keep-alive, timeouts, etc. as needed
-      // connections: 10, // Example: Max 10 connections
-    });
+    // this.httpClient = new Agent({ // Removed httpClient initialization
+    //   // TODO: Configure keep-alive, timeouts, etc. as needed
+    //   // connections: 10, // Example: Max 10 connections
+    // });
   }
 
   private mapToOpenRouterMessages(message: string | Part | (string | Part)[]): { role: string; content: string }[] {
@@ -179,7 +179,7 @@ export class OpenRouterLLMService implements LLMService {
           // 'X-Title': YOUR_APP_NAME,
         },
         body: JSON.stringify(requestBody),
-        dispatcher: this.httpClient,
+        // dispatcher: this.httpClient, // Removed dispatcher
       });
 
       const durationMs = Date.now() - startTime;
@@ -245,7 +245,7 @@ export class OpenRouterLLMService implements LLMService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
-        dispatcher: this.httpClient,
+        // dispatcher: this.httpClient, // Removed dispatcher
       });
 
       if (!undiciResponse.ok) {
