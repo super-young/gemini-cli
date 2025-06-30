@@ -179,21 +179,21 @@ describe('App UI', () => {
   // let mockSettings: LoadedSettings; // REMOVED - old settings system
   let currentUnmount: (() => void) | undefined;
 
-  const createMockSettings = (
-    settings: Partial<Settings> = {},
-  ): LoadedSettings => {
-    const userSettingsFile: SettingsFile = {
-      path: '/user/config.yaml',
-      settings: {},
-    };
-    const workspaceSettingsFile: SettingsFile = {
-      path: '/workspace/.gemini/config.yaml',
-      settings: {
-        ...settings,
-      },
-    };
-    return new LoadedSettings(userSettingsFile, workspaceSettingsFile, []);
-  };
+  // const createMockSettings = (
+  //   settings: Partial<Settings> = {},
+  // ): LoadedSettings => {
+  //   const userSettingsFile: SettingsFile = {
+  //     path: '/user/config.yaml',
+  //     settings: {},
+  //   };
+  //   const workspaceSettingsFile: SettingsFile = {
+  //     path: '/workspace/.gemini/config.yaml',
+  //     settings: {
+  //       ...settings,
+  //     },
+  //   };
+  //   return new LoadedSettings(userSettingsFile, workspaceSettingsFile, []);
+  // };
 
   beforeEach(() => {
     const ServerConfigMocked = vi.mocked(ServerConfig, true);
