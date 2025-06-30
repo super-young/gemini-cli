@@ -323,14 +323,14 @@ describe('useGeminiStream', () => {
       .mockReturnValue((async function* () {})());
   });
 
-  const mockLoadedSettings: LoadedSettings = {
-    merged: { preferredEditor: 'vscode' },
-    user: { path: '/user/config.yaml', settings: {} },
-    workspace: { path: '/workspace/.gemini/config.yaml', settings: {} },
-    errors: [],
-    forScope: vi.fn(),
-    setValue: vi.fn(),
-  } as unknown as LoadedSettings;
+  // const mockLoadedSettings: LoadedSettings = {
+  //   merged: { preferredEditor: 'vscode' },
+  //   user: { path: '/user/config.yaml', settings: {} },
+  //   workspace: { path: '/workspace/.gemini/config.yaml', settings: {} },
+  //   errors: [],
+  //   forScope: vi.fn(),
+  //   setValue: vi.fn(),
+  // } as unknown as LoadedSettings;
 
   const renderTestHook = (
     initialToolCalls: TrackedToolCall[] = [],

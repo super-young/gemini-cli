@@ -103,19 +103,19 @@ describe('gemini.tsx main function', () => {
       message: 'Test settings error',
       path: '/test/config.yaml',
     };
-    const userSettingsFile: SettingsFile = {
-      path: '/user/config.yaml',
-      settings: {},
-    };
-    const workspaceSettingsFile: SettingsFile = {
-      path: '/workspace/.gemini/config.yaml',
-      settings: {},
-    };
-    const mockLoadedSettings = new LoadedSettings(
-      userSettingsFile,
-      workspaceSettingsFile,
-      [settingsError],
-    );
+    // const userSettingsFile: SettingsFile = {
+    //   path: '/user/config.yaml',
+    //   settings: {},
+    // };
+    // const workspaceSettingsFile: SettingsFile = {
+    //   path: '/workspace/.gemini/config.yaml',
+    //   settings: {},
+    // };
+    // const mockLoadedSettings = new LoadedSettings(
+    //   userSettingsFile,
+    //   workspaceSettingsFile,
+    //   [settingsError],
+    // );
 
   //   loadSettingsMock.mockReturnValue(mockLoadedSettings);
 
@@ -141,5 +141,5 @@ describe('gemini.tsx main function', () => {
 
   //   // Verify process.exit was called (indirectly, via the thrown error)
   //   expect(processExitSpy).toHaveBeenCalledWith(1);
-  // });
+  });
 });
