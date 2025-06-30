@@ -12,26 +12,29 @@ Configuration is applied in the following order of precedence (lower numbers are
 4.  **Environment variables:** System-wide or session-specific variables, potentially loaded from `.env` files.
 5.  **Command-line arguments:** Values passed when launching the CLI.
 
-## The user settings file and project settings file
+## Configuration Files
 
-Gemini CLI uses `settings.json` files for persistent configuration. There are two locations for these files:
+Gemini CLI uses YAML and `.env` files for persistent configuration. There are two main configuration files:
 
-- **User settings file:**
-  - **Location:** `~/.gemini/settings.json` (where `~` is your home directory).
+- **User config file:**
+  - **Location:** `~/.gemini/config.yaml` (where `~` is your home directory).
   - **Scope:** Applies to all Gemini CLI sessions for the current user.
-- **Project settings file:**
-  - **Location:** `.gemini/settings.json` within your project's root directory.
+- **Project config file:**
+  - **Location:** `.gemini/config.yaml` within your project's root directory.
   - **Scope:** Applies only when running Gemini CLI from that specific project. Project settings override user settings.
+- **Environment file:**
+  - **Location:** `.env` within your project's root directory or user home directory.
+  - **Scope:** Applies to all Gemini CLI sessions. Variables in the project `.env` file override those in the user `.env` file.
 
-**Note on environment variables in settings:** String values within your `settings.json` files can reference environment variables using either `$VAR_NAME` or `${VAR_NAME}` syntax. These variables will be automatically resolved when the settings are loaded. For example, if you have an environment variable `MY_API_TOKEN`, you could use it in `settings.json` like this: `"apiKey": "$MY_API_TOKEN"`.
+**Note on environment variables in settings:** String values within your `config.yaml` files can reference environment variables using either `$VAR_NAME` or `${VAR_NAME}` syntax. These variables will be automatically resolved when the settings are loaded. For example, if you have an environment variable `MY_API_TOKEN`, you could use it in `config.yaml` like this: `apiKey: "$MY_API_TOKEN"`.
 
 ### The `.gemini` directory in your project
 
-In addition to a project settings file, a project's `.gemini` directory can contain other project-specific files related to Gemini CLI's operation, such as:
+In addition to a project config file, a project's `.gemini` directory can contain other project-specific files related to Gemini CLI's operation, such as:
 
 - [Custom sandbox profiles](#sandboxing) (e.g., `.gemini/sandbox-macos-custom.sb`, `.gemini/sandbox.Dockerfile`).
 
-### Available settings in `settings.json`:
+### Available settings in `config.yaml`:
 
 - **`contextFileName`** (string or array of strings):
   - **Description:** Specifies the filename for context files (e.g., `GEMINI.md`, `AGENTS.md`). Can be a single filename or a list of accepted filenames.
@@ -40,59 +43,57 @@ In addition to a project settings file, a project's `.gemini` directory can cont
 
 - **`bugCommand`** (object):
   - **Description:** Overrides the default URL for the `/bug` command.
-  - **Default:** `"urlTemplate": "https://github.com/google-gemini/gemini-cli/issues/new?template=bug_report.yml&title={title}&info={info}"`
+  - **Default:** `urlTemplate: "https://github.com/google-gemini/gemini-cli/issues/new?template=bug_report.yml&title={title}&info={info}"`
   - **Properties:**
     - **`urlTemplate`** (string): A URL that can contain `{title}` and `{info}` placeholders.
   - **Example:**
-    ```json
-    "bugCommand": {
-      "urlTemplate": "https://bug.example.com/new?title={title}&info={info}"
-    }
+    ```yaml
+    bugCommand:
+      urlTemplate: "https://bug.example.com/new?title={title}&info={info}"
     ```
 
 - **`fileFiltering`** (object):
   - **Description:** Controls git-aware file filtering behavior for @ commands and file discovery tools.
-  - **Default:** `"respectGitIgnore": true, "enableRecursiveFileSearch": true`
+  - **Default:** `respectGitIgnore: true, enableRecursiveFileSearch: true`
   - **Properties:**
     - **`respectGitIgnore`** (boolean): Whether to respect .gitignore patterns when discovering files. When set to `true`, git-ignored files (like `node_modules/`, `dist/`, `.env`) are automatically excluded from @ commands and file listing operations.
     - **`enableRecursiveFileSearch`** (boolean): Whether to enable searching recursively for filenames under the current tree when completing @ prefixes in the prompt.
   - **Example:**
-    ```json
-    "fileFiltering": {
-      "respectGitIgnore": true,
-      "enableRecursiveFileSearch": false
-    }
+    ```yaml
+    fileFiltering:
+      respectGitIgnore: true
+      enableRecursiveFileSearch: false
     ```
 
 - **`coreTools`** (array of strings):
   - **Description:** Allows you to specify a list of core tool names that should be made available to the model. This can be used to restrict the set of built-in tools. See [Built-in Tools](../core/tools-api.md#built-in-tools) for a list of core tools.
   - **Default:** All tools available for use by the Gemini model.
-  - **Example:** `"coreTools": ["ReadFileTool", "GlobTool", "SearchText"]`.
+  - **Example:** `coreTools: ["ReadFileTool", "GlobTool", "SearchText"]`
 
 - **`excludeTools`** (array of strings):
   - **Description:** Allows you to specify a list of core tool names that should be excluded from the model. A tool listed in both `excludeTools` and `coreTools` is excluded.
   - **Default**: No tools excluded.
-  - **Example:** `"excludeTools": ["run_shell_command", "findFiles"]`.
+  - **Example:** `excludeTools: ["run_shell_command", "findFiles"]`
 
 - **`autoAccept`** (boolean):
   - **Description:** Controls whether the CLI automatically accepts and executes tool calls that are considered safe (e.g., read-only operations) without explicit user confirmation. If set to `true`, the CLI will bypass the confirmation prompt for tools deemed safe.
   - **Default:** `false`
-  - **Example:** `"autoAccept": true`
+  - **Example:** `autoAccept: true`
 
 - **`theme`** (string):
   - **Description:** Sets the visual [theme](./themes.md) for Gemini CLI.
   - **Default:** `"Default"`
-  - **Example:** `"theme": "GitHub"`
+  - **Example:** `theme: "GitHub"`
 
 - **`sandbox`** (boolean or string):
   - **Description:** Controls whether and how to use sandboxing for tool execution. If set to `true`, Gemini CLI uses a pre-built `gemini-cli-sandbox` Docker image. For more information, see [Sandboxing](#sandboxing).
   - **Default:** `false`
-  - **Example:** `"sandbox": "docker"`
+  - **Example:** `sandbox: "docker"`
 
 - **`toolDiscoveryCommand`** (string):
   - **Description:** Defines a custom shell command for discovering tools from your project. The shell command must return on `stdout` a JSON array of [function declarations](https://ai.google.dev/gemini-api/docs/function-calling#function-declarations). Tool wrappers are optional.
   - **Default:** Empty
-  - **Example:** `"toolDiscoveryCommand": "bin/get_tools"`
+  - **Example:** `toolDiscoveryCommand: "bin/get_tools"`
 
 - **`toolCallCommand`** (string):
   - **Description:** Defines a custom shell command for calling a specific tool that was discovered using `toolDiscoveryCommand`. The shell command must meet the following criteria:
@@ -100,7 +101,7 @@ In addition to a project settings file, a project's `.gemini` directory can cont
     - It must read function arguments as JSON on `stdin`, analogous to [`functionCall.args`](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference#functioncall).
     - It must return function output as JSON on `stdout`, analogous to [`functionResponse.response.content`](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference#functionresponse).
   - **Default:** Empty
-  - **Example:** `"toolCallCommand": "bin/call_tool"`
+  - **Example:** `toolCallCommand: "bin/call_tool"`
 
 - **`mcpServers`** (object):
   - **Description:** Configures connections to one or more Model-Context Protocol (MCP) servers for discovering and using custom tools. Gemini CLI attempts to connect to each configured MCP server to discover available tools. If multiple MCP servers expose a tool with the same name, the tool names will be prefixed with the server alias you defined in the configuration (e.g., `serverAlias__actualToolName`) to avoid conflicts. Note that the system might strip certain schema properties from MCP tool definitions for compatibility.
@@ -114,90 +115,78 @@ In addition to a project settings file, a project's `.gemini` directory can cont
       - `timeout` (number, optional): Timeout in milliseconds for requests to this MCP server.
       - `trust` (boolean, optional): Trust this server and bypass all tool call confirmations.
   - **Example:**
-    ```json
-    "mcpServers": {
-      "myPythonServer": {
-        "command": "python",
-        "args": ["mcp_server.py", "--port", "8080"],
-        "cwd": "./mcp_tools/python",
-        "timeout": 5000
-      },
-      "myNodeServer": {
-        "command": "node",
-        "args": ["mcp_server.js"],
-        "cwd": "./mcp_tools/node"
-      },
-      "myDockerServer": {
-        "command": "docker",
-        "args": ["run", "i", "--rm", "-e", "API_KEY", "ghcr.io/foo/bar"],
-        "env": {
-          "API_KEY": "$MY_API_TOKEN"
-        }
-      },
-    }
+    ```yaml
+    mcpServers:
+      myPythonServer:
+        command: "python"
+        args: ["mcp_server.py", "--port", "8080"]
+        cwd: "./mcp_tools/python"
+        timeout: 5000
+      myNodeServer:
+        command: "node"
+        args: ["mcp_server.js"]
+        cwd: "./mcp_tools/node"
+      myDockerServer:
+        command: "docker"
+        args: ["run", "i", "--rm", "-e", "API_KEY", "ghcr.io/foo/bar"]
+        env:
+          API_KEY: "$MY_API_TOKEN"
     ```
 
 - **`checkpointing`** (object):
   - **Description:** Configures the checkpointing feature, which allows you to save and restore conversation and file states. See the [Checkpointing documentation](../checkpointing.md) for more details.
-  - **Default:** `{"enabled": false}`
+  - **Default:** `enabled: false`
   - **Properties:**
     - **`enabled`** (boolean): When `true`, the `/restore` command is available.
 
 - **`preferredEditor`** (string):
   - **Description:** Specifies the preferred editor to use for viewing diffs.
   - **Default:** `vscode`
-  - **Example:** `"preferredEditor": "vscode"`
+  - **Example:** `preferredEditor: "vscode"`
 
 - **`telemetry`** (object)
   - **Description:** Configures logging and metrics collection for Gemini CLI. For more information, see [Telemetry](../telemetry.md).
-  - **Default:** `{"enabled": false, "target": "local", "otlpEndpoint": "http://localhost:4317", "logPrompts": true}`
+  - **Default:** `enabled: false, target: "local", otlpEndpoint: "http://localhost:4317", logPrompts: true`
   - **Properties:**
     - **`enabled`** (boolean): Whether or not telemetry is enabled.
     - **`target`** (string): The destination for collected telemetry. Supported values are `local` and `gcp`.
     - **`otlpEndpoint`** (string): The endpoint for the OTLP Exporter.
     - **`logPrompts`** (boolean): Whether or not to include the content of user prompts in the logs.
   - **Example:**
-    ```json
-    "telemetry": {
-      "enabled": true,
-      "target": "local",
-      "otlpEndpoint": "http://localhost:16686",
-      "logPrompts": false
-    }
+    ```yaml
+    telemetry:
+      enabled: true
+      target: "local"
+      otlpEndpoint: "http://localhost:16686"
+      logPrompts: false
     ```
 - **`usageStatisticsEnabled`** (boolean):
   - **Description:** Enables or disables the collection of usage statistics. See [Usage Statistics](#usage-statistics) for more information.
   - **Default:** `true`
   - **Example:**
-    ```json
-    "usageStatisticsEnabled": false
+    ```yaml
+    usageStatisticsEnabled: false
     ```
 
-### Example `settings.json`:
+### Example `config.yaml`:
 
-```json
-{
-  "theme": "GitHub",
-  "sandbox": "docker",
-  "toolDiscoveryCommand": "bin/get_tools",
-  "toolCallCommand": "bin/call_tool",
-  "mcpServers": {
-    "mainServer": {
-      "command": "bin/mcp_server.py"
-    },
-    "anotherServer": {
-      "command": "node",
-      "args": ["mcp_server.js", "--verbose"]
-    }
-  },
-  "telemetry": {
-    "enabled": true,
-    "target": "local",
-    "otlpEndpoint": "http://localhost:4317",
-    "logPrompts": true
-  },
-  "usageStatisticsEnabled": true
-}
+```yaml
+theme: "GitHub"
+sandbox: "docker"
+toolDiscoveryCommand: "bin/get_tools"
+toolCallCommand: "bin/call_tool"
+mcpServers:
+  mainServer:
+    command: "bin/mcp_server.py"
+  anotherServer:
+    command: "node"
+    args: ["mcp_server.js", "--verbose"]
+telemetry:
+  enabled: true
+  target: "local"
+  otlpEndpoint: "http://localhost:4317"
+  logPrompts: true
+usageStatisticsEnabled: true
 ```
 
 ## Shell History
@@ -248,7 +237,7 @@ The CLI automatically loads environment variables from an `.env` file. The loadi
   - If using Vertex AI, ensure you have the necessary permissions and set the `GOOGLE_GENAI_USE_VERTEXAI=true` environment variable.
   - Example: `export GOOGLE_CLOUD_LOCATION="YOUR_PROJECT_LOCATION"`.
 - **`GEMINI_SANDBOX`**:
-  - Alternative to the `sandbox` setting in `settings.json`.
+  - Alternative to the `sandbox` setting in `config.yaml`.
   - Accepts `true`, `false`, `docker`, `podman`, or a custom command string.
 - **`SEATBELT_PROFILE`** (macOS specific):
   - Switches the Seatbelt (`sandbox-exec`) profile on macOS.

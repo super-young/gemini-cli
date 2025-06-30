@@ -325,8 +325,8 @@ describe('useGeminiStream', () => {
 
   const mockLoadedSettings: LoadedSettings = {
     merged: { preferredEditor: 'vscode' },
-    user: { path: '/user/settings.json', settings: {} },
-    workspace: { path: '/workspace/.gemini/settings.json', settings: {} },
+    user: { path: '/user/config.yaml', settings: {} },
+    workspace: { path: '/workspace/.gemini/config.yaml', settings: {} },
     errors: [],
     forScope: vi.fn(),
     setValue: vi.fn(),

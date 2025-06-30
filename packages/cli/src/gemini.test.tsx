@@ -102,14 +102,14 @@ describe('gemini.tsx main function', () => {
   it('should call process.exit(1) if settings have errors', async () => {
     const settingsError = {
       message: 'Test settings error',
-      path: '/test/settings.json',
+      path: '/test/config.yaml',
     };
     const userSettingsFile: SettingsFile = {
-      path: '/user/settings.json',
+      path: '/user/config.yaml',
       settings: {},
     };
     const workspaceSettingsFile: SettingsFile = {
-      path: '/workspace/.gemini/settings.json',
+      path: '/workspace/.gemini/config.yaml',
       settings: {},
     };
     const mockLoadedSettings = new LoadedSettings(
@@ -134,10 +134,10 @@ describe('gemini.tsx main function', () => {
     // Verify console.error was called with the error message
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     expect(stripAnsi(String(consoleErrorSpy.mock.calls[0][0]))).toBe(
-      'Error in /test/settings.json: Test settings error',
+      'Error in /test/config.yaml: Test settings error',
     );
     expect(stripAnsi(String(consoleErrorSpy.mock.calls[1][0]))).toBe(
-      'Please fix /test/settings.json and try again.',
+      'Please fix /test/config.yaml and try again.',
     );
 
     // Verify process.exit was called (indirectly, via the thrown error)

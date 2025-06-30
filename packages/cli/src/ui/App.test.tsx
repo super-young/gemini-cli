@@ -182,11 +182,11 @@ describe('App UI', () => {
     settings: Partial<Settings> = {},
   ): LoadedSettings => {
     const userSettingsFile: SettingsFile = {
-      path: '/user/settings.json',
+      path: '/user/config.yaml',
       settings: {},
     };
     const workspaceSettingsFile: SettingsFile = {
-      path: '/workspace/.gemini/settings.json',
+      path: '/workspace/.gemini/config.yaml',
       settings: {
         ...settings,
       },
