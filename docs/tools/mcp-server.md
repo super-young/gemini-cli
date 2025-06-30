@@ -47,31 +47,27 @@ The Gemini CLI supports three MCP transport types:
 
 ## How to set up your MCP server
 
-The Gemini CLI uses the `mcpServers` configuration in your `settings.json` file to locate and connect to MCP servers. This configuration supports multiple servers with different transport mechanisms.
+The Gemini CLI uses the `mcpServers` configuration in your `config.yaml` file to locate and connect to MCP servers. This configuration supports multiple servers with different transport mechanisms.
 
-### Configure the MCP server in settings.json
+### Configure the MCP server in `config.yaml`
 
-You can configure MCP servers at the global level in the `~/.gemini/settings.json` file or in your project's root directory, create or open the `.gemini/settings.json` file. Within the file, add the `mcpServers` configuration block.
+You can configure MCP servers at the global level in the `~/.gemini/config.yaml` file or in your project's root directory, create or open the `.gemini/config.yaml` file. Within the file, add the `mcpServers` configuration block.
 
 ### Configuration Structure
 
-Add an `mcpServers` object to your `settings.json` file:
+Add an `mcpServers` object to your `config.yaml` file:
 
-```json
-{ ...file contains other config objects
-  "mcpServers": {
-    "serverName": {
-      "command": "path/to/server",
-      "args": ["--arg1", "value1"],
-      "env": {
-        "API_KEY": "$MY_API_TOKEN"
-      },
-      "cwd": "./server-directory",
-      "timeout": 30000,
-      "trust": false
-    }
-  }
-}
+```yaml
+# ...file contains other config objects
+mcpServers:
+  serverName:
+    command: "path/to/server"
+    args: ["--arg1", "value1"]
+    env:
+      API_KEY: "$MY_API_TOKEN"
+    cwd: "./server-directory"
+    timeout: 30000
+    trust: false
 ```
 
 ### Configuration Properties
@@ -96,74 +92,56 @@ Each server configuration supports the following properties:
 
 #### Python MCP Server (Stdio)
 
-```json
-{
-  "mcpServers": {
-    "pythonTools": {
-      "command": "python",
-      "args": ["-m", "my_mcp_server", "--port", "8080"],
-      "cwd": "./mcp-servers/python",
-      "env": {
-        "DATABASE_URL": "$DB_CONNECTION_STRING",
-        "API_KEY": "${EXTERNAL_API_KEY}"
-      },
-      "timeout": 15000
-    }
-  }
-}
+```yaml
+mcpServers:
+  pythonTools:
+    command: "python"
+    args: ["-m", "my_mcp_server", "--port", "8080"]
+    cwd: "./mcp-servers/python"
+    env:
+      DATABASE_URL: "$DB_CONNECTION_STRING"
+      API_KEY: "${EXTERNAL_API_KEY}"
+    timeout: 15000
 ```
 
 #### Node.js MCP Server (Stdio)
 
-```json
-{
-  "mcpServers": {
-    "nodeServer": {
-      "command": "node",
-      "args": ["dist/server.js", "--verbose"],
-      "cwd": "./mcp-servers/node",
-      "trust": true
-    }
-  }
-}
+```yaml
+mcpServers:
+  nodeServer:
+    command: "node"
+    args: ["dist/server.js", "--verbose"]
+    cwd: "./mcp-servers/node"
+    trust: true
 ```
 
 #### Docker-based MCP Server
 
-```json
-{
-  "mcpServers": {
-    "dockerizedServer": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "API_KEY",
-        "-v",
-        "${PWD}:/workspace",
-        "my-mcp-server:latest"
-      ],
-      "env": {
-        "API_KEY": "$EXTERNAL_SERVICE_TOKEN"
-      }
-    }
-  }
-}
+```yaml
+mcpServers:
+  dockerizedServer:
+    command: "docker"
+    args: [
+      "run",
+      "-i",
+      "--rm",
+      "-e",
+      "API_KEY",
+      "-v",
+      "${PWD}:/workspace",
+      "my-mcp-server:latest"
+    ]
+    env:
+      API_KEY: "$EXTERNAL_SERVICE_TOKEN"
 ```
 
 #### HTTP-based MCP Server
 
-```json
-{
-  "mcpServers": {
-    "httpServer": {
-      "httpUrl": "http://localhost:3000/mcp",
-      "timeout": 5000
-    }
-  }
-}
+```yaml
+mcpServers:
+  httpServer:
+    httpUrl: "http://localhost:3000/mcp"
+    timeout: 5000
 ```
 
 ## Discovery Process Deep Dive

@@ -260,41 +260,33 @@ async function loadNonInteractiveConfig(config: Config, mergedConfigSubset: Merg
       ...new Set([...existingExcludeTools, ...interactiveTools]),
     ];
 
-    // Create a temporary minimal "settings-like" object for re-loading config if needed.
-    // This is a bit of a hack due to how loadCliConfig was structured.
-    // Ideally, we'd modify `config` directly or have a leaner way to get a variant.
-    // For now, we pass a structure that `loadCliConfig` can (partially) use
-    // if we were to call it again.
-    // However, the current `loadCliConfig` doesn't take this kind of partial settings object.
-    // This part of the logic needs significant rethinking.
-    // For now, let's assume we modify the existing `config` object if possible,
-    // or accept that non-interactive tool filtering might be different.
-
-    // The simplest approach without re-calling loadCliConfig (which now has a different signature)
-    // is to acknowledge that the `Config` object, once created, isn't easily modified
-    // to change tool lists.
-    // This implies that `excludeTools` should be correctly set in the initial `loadCliConfig` call.
-    // If `runNonInteractive` needs a *different* set of tools, the `Config` object
-    // would need to be recreated or support dynamic tool registry changes.
-
-    // Given the current plan, we are *not* re-calling loadCliConfig with modified settings here.
-    // We will rely on the initial `config` being suitable or `runNonInteractive` handling tool permissions.
-    // If `finalConfig.excludeTools` was used by `ToolRegistry`, it would be set once.
-    // Let's log a warning if interactive tools might be present.
-    const hasInteractiveTools = interactiveTools.some(tool => !config.getExcludeTools()?.includes(tool) && config.getCoreTools()?.includes(tool));
-    if (hasInteractiveTools) {
-        logger.warn("Running in non-interactive mode, but interactive tools might be enabled. Ensure configuration restricts tools if necessary.");
-    }
-    // `finalConfig` remains `config` here.
+    const nonInteractiveSettings = {
+      ...settings.merged,
+      excludeTools: newExcludeTools,
+    };
+    finalConfig = await loadCliConfig(
+      nonInteractiveSettings,
+      extensions,
+      config.getSessionId(),
+    );
   }
 
-  // Auth validation for non-interactive mode
-  // Use selectedAuthType from mergedConfigSubset, or default to GEMINI_API_KEY if present.
-  const authType = mergedConfigSubset.selectedAuthType || (process.env.GEMINI_API_KEY ? AuthType.USE_GEMINI : undefined);
+  return await validateNonInterActiveAuth(
+    settings.merged.selectedAuthType,
+    finalConfig,
+  );
+}
 
-  if (!authType) {
+async function validateNonInterActiveAuth(
+  selectedAuthType: AuthType | undefined,
+  nonInteractiveConfig: Config,
+) {
+  // making a special case for the cli. many headless environments might not have a config.yaml set
+  // so if GEMINI_API_KEY is set, we'll use that. However since the oauth things are interactive anyway, we'll
+  // still expect that exists
+  if (!selectedAuthType && !process.env.GEMINI_API_KEY) {
     console.error(
-      'Non-interactive mode requires an authentication method. Please configure `selectedAuthType` in .gemini/config.yaml or set GEMINI_API_KEY environment variable.',
+      'Please set an Auth method in your .gemini/config.yaml or .env file OR specify GEMINI_API_KEY env variable file before running',
     );
     process.exit(1);
   }

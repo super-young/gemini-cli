@@ -22,29 +22,24 @@ Before you begin, ensure you have the following installed and configured:
 
 ### Guide
 
-#### Configure the MCP server in `settings.json`
+#### Configure the MCP server in `config.yaml`
 
-In your project's root directory, create or open the [`.gemini/settings.json` file](./configuration.md). Within the file, add the `mcpServers` configuration block, which provides instructions for how to launch the GitHub MCP server.
+In your project's root directory, create or open the [`.gemini/config.yaml` file](./configuration.md). Within the file, add the `mcpServers` configuration block, which provides instructions for how to launch the GitHub MCP server.
 
-```json
-{
-  "mcpServers": {
-    "github": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-      }
-    }
-  }
-}
+```yaml
+mcpServers:
+  github:
+    command: "docker"
+    args: [
+      "run",
+      "-i",
+      "--rm",
+      "-e",
+      "GITHUB_PERSONAL_ACCESS_TOKEN",
+      "ghcr.io/github/github-mcp-server"
+    ]
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN}"
 ```
 
 #### Set your GitHub token
@@ -58,7 +53,7 @@ Use an environment variable to store your GitHub PAT:
 GITHUB_PERSONAL_ACCESS_TOKEN="pat_YourActualGitHubTokenHere"
 ```
 
-Gemini CLI uses this value in the `mcpServers` configuration that you defined in the `settings.json` file.
+Gemini CLI uses this value in the `mcpServers` configuration that you defined in the `config.yaml` file.
 
 #### Launch Gemini CLI and verify the connection
 
