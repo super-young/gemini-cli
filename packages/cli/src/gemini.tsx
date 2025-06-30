@@ -20,8 +20,8 @@ import { getStartupWarnings } from './utils/startupWarnings.js';
 import { runNonInteractive } from './nonInteractiveCli.js';
 // import { loadExtensions, Extension } from './config/extension.js'; // REMOVED - Extension type might be imported if needed by nonInteractive
 import { cleanupCheckpoints } from './utils/cleanup.js';
+import { logger } from './config/config.js'; // Import logger from config.ts
 import {
-  logger,
   ApprovalMode,
   Config,
   EditTool,
@@ -188,7 +188,7 @@ export async function main() {
           // Ideally, AppWrapper takes `config` and derives what it needs.
           // This will likely require changes in AppWrapper.
           // For now, let's assume AppWrapper is adapted or we pass a compatible object.
-          mergedConfigSubset={mergedConfigSubset} // Temporary, needs AppWrapper update
+          // mergedConfigSubset={mergedConfigSubset} // Removed, AppWrapper should use config
           startupWarnings={startupWarnings}
         />
       </React.StrictMode>,

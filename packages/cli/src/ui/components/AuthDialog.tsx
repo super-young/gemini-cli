@@ -40,7 +40,7 @@ export function AuthDialog({
   ];
 
   let initialAuthIndex = items.findIndex(
-    (item) => item.value === config.merged.selectedAuthType,
+    (item) => item.value === (config.get('auth.type') as AuthType | undefined),
   );
 
   if (initialAuthIndex === -1) {
@@ -59,7 +59,7 @@ export function AuthDialog({
 
   useInput((_input, key) => {
     if (key.escape) {
-      if (config.merged.selectedAuthType === undefined) {
+      if ((config.get('auth.type') as AuthType | undefined) === undefined) {
         // Prevent exiting if no auth method is set
         setErrorMessage(
           'You must select an auth method to proceed. Press Ctrl+C twice to exit.',

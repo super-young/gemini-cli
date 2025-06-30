@@ -6,8 +6,9 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { themeManager } from '../themes/theme-manager.js';
-import { LoadedSettings, SettingScope } from '../../config/config.js'; // Import LoadedSettings, AppSettings, MergedSetting
-import { type HistoryItem, MessageType } from '../types.js';
+// import { LoadedSettings } from '../../config/config.js'; // Removed
+import { type HistoryItem, MessageType, SettingScope } from '../types.js'; // SettingScope from types.js
+import { type Config } from '@super-young/gemini-cli-core'; // Added Config import
 import process from 'node:process';
 
 interface UseThemeCommandReturn {
@@ -21,12 +22,12 @@ interface UseThemeCommandReturn {
 }
 
 export const useThemeCommand = (
-  loadedSettings: LoadedSettings,
+  config: Config, // Changed from loadedSettings
   setThemeError: (error: string | null) => void,
   addItem: (item: Omit<HistoryItem, 'id'>, timestamp: number) => void,
 ): UseThemeCommandReturn => {
   // Determine the effective theme
-  const effectiveTheme = loadedSettings.merged.theme;
+  const effectiveTheme = config.get('theme') as string | undefined; // Changed from loadedSettings
 
   // Initial state: Open dialog if no theme is set in either user or workspace settings
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(
@@ -98,13 +99,14 @@ export const useThemeCommand = (
     (themeName: string | undefined, scope: SettingScope) => {
       // Added scope parameter
       try {
-        loadedSettings.setValue(scope, 'theme', themeName); // Update the merged settings
-        applyTheme(loadedSettings.merged.theme); // Apply the current theme
+        config.set('theme', themeName); // Use config.set, scope is not directly used here
+        // TODO: Re-evaluate how scope (User/Workspace) is handled with config.set
+        applyTheme(config.get('theme') as string | undefined); // Apply the current theme
       } finally {
         setIsThemeDialogOpen(false); // Close the dialog
       }
     },
-    [applyTheme, loadedSettings],
+    [applyTheme, config], // Changed loadedSettings to config
   );
 
   return {

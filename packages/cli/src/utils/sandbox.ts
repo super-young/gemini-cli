@@ -10,12 +10,9 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { quote } from 'shell-quote';
-import {
-  USER_SETTINGS_DIR,
-  SETTINGS_DIRECTORY_NAME,
-} from '../config/settings.js';
 import { promisify } from 'util';
 import { SandboxConfig } from '@super-young/gemini-cli-core';
+import { SETTINGS_DIRECTORY_NAME, USER_SETTINGS_DIR } from './sandbox_constants.js';
 
 const execAsync = promisify(exec);
 
@@ -329,11 +326,11 @@ export async function start_sandbox(
       const gcRoot = gcPath.split('/packages/')[0];
       // if project folder has sandbox.Dockerfile under project settings folder, use that
       let buildArgs = '';
-      const projectSandboxDockerfile = path.join(
-        SETTINGS_DIRECTORY_NAME,
-        'sandbox.Dockerfile',
-      );
-      if (isCustomProjectSandbox) {
+      // const projectSandboxDockerfile = path.join( // Already defined above with DEFAULT_SETTINGS_DIR_NAME
+      // DEFAULT_SETTINGS_DIR_NAME,
+      // 'sandbox.Dockerfile',
+      // );
+      if (isCustomProjectSandbox) { // Uses the already defined projectSandboxDockerfile
         console.error(`using ${projectSandboxDockerfile} for sandbox`);
         buildArgs += `-f ${path.resolve(projectSandboxDockerfile)} -i ${image}`;
       }

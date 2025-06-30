@@ -45,7 +45,7 @@ export const useAuthCommand = (
     };
 
     void authFlow();
-  }, [isAuthDialogOpen, settings, config, setAuthError, openAuthDialog]);
+  }, [isAuthDialogOpen, config, setAuthError, openAuthDialog]); // Removed settings
 
   const handleAuthSelect = useCallback(
     async (authMethod: string | undefined) => {
