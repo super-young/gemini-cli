@@ -5,12 +5,12 @@
  */
 
 import { Message, MessageType } from '../types.js';
-import { Config } from '@super-young/gemini-cli-core';
-import { LoadedSettings } from '../../config/config.js';
+import { Config, getAllGeminiMdFilenames } from '@super-young/gemini-cli-core';
+// import { LoadedSettings } from '../../config/config.js'; // Removed
 
 export function createShowMemoryAction(
   config: Config | null,
-  settings: LoadedSettings,
+  // settings: LoadedSettings, // Removed settings
   addMessage: (message: Message) => void,
 ) {
   return async () => {
@@ -31,10 +31,8 @@ export function createShowMemoryAction(
 
     const currentMemory = config.getUserMemory();
     const fileCount = config.getGeminiMdFileCount();
-    const contextFileName = settings.merged.contextFileName;
-    const contextFileNames = Array.isArray(contextFileName)
-      ? contextFileName
-      : [contextFileName];
+    // const contextFileName = settings.merged.contextFileName; // Removed
+    const contextFileNames = getAllGeminiMdFilenames(); // Use core function
 
     if (debugMode) {
       console.log(

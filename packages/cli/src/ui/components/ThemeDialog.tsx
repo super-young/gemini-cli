@@ -93,12 +93,14 @@ export function ThemeDialog({
     selectedScope === SettingScope.User
       ? SettingScope.Workspace
       : SettingScope.User;
-  if (config.getForScope(otherScope, 'theme') !== undefined) {
-    otherScopeModifiedMessage =
-      config.getForScope(selectedScope, 'theme') !== undefined
-        ? `(Also modified in ${otherScope})`
-        : `(Modified in ${otherScope})`;
-  }
+  // TODO: Revisit this logic if scope-specific values can be read from Config.
+  // if (config.getForScope(otherScope, 'theme') !== undefined) {
+  //   otherScopeModifiedMessage =
+  //     config.getForScope(selectedScope, 'theme') !== undefined
+  //       ? `(Also modified in ${otherScope})`
+  //       : `(Modified in ${otherScope})`;
+  // }
+  // otherScopeModifiedMessage is already initialized to ''
 
   // Constants for calculating preview pane layout.
   // These values are based on the JSX structure below.

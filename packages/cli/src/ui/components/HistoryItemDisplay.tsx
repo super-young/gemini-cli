@@ -36,14 +36,44 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
   isPending,
   config,
   isFocused = true,
-}) => (
-  <Box flexDirection="column" key={item.id}>
-    {/* Render standard message types */}
-    {item.type === 'user' && <UserMessage text={item.text} />}
-    {item.type === 'user_shell' && <UserShellMessage text={item.text} />}
-    {item.type === 'gemini' && (
+}) => {
+  // Helper to extract text from PartListUnion
+  const getTextFromParts = (data: string | import('@google/genai').PartListUnion | undefined): string => {
+    if (typeof data === 'string') {
+      return data;
+    }
+    if (!data) {
+      return '';
+    }
+    // At this point, data is PartListUnion (Part | Part[]) from @google/genai
+    // or it could be a string if item.text was already a string.
+    // HistoryItem.text is string | PartListUnion.
+    // So, data parameter is string | Part | Part[] | undefined.
+
+    const itemsToProcess: (string | import('@google/genai').Part)[] = Array.isArray(data) ? data : [data];
+
+    return itemsToProcess
+      .map(item => {
+        if (typeof item === 'string') {
+          return item;
+        }
+        // item is Part
+        if (typeof item === 'object' && item !== null && 'text' in item && typeof item.text === 'string') {
+          return item.text;
+        }
+        return ''; // Or handle other Part types like inlineData if necessary
+      })
+      .join('');
+  };
+
+  return (
+    <Box flexDirection="column" key={item.id}>
+      {/* Render standard message types */}
+      {item.type === 'user' && <UserMessage text={getTextFromParts(item.text)} />}
+      {item.type === 'user_shell' && <UserShellMessage text={getTextFromParts(item.text)} />}
+      {item.type === 'gemini' && (
       <GeminiMessage
-        text={item.text}
+        text={getTextFromParts(item.text)} // Apply helper
         isPending={isPending}
         availableTerminalHeight={availableTerminalHeight}
         terminalWidth={terminalWidth}
@@ -51,14 +81,14 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
     )}
     {item.type === 'gemini_content' && (
       <GeminiMessageContent
-        text={item.text}
+        text={getTextFromParts(item.text)} // Apply helper
         isPending={isPending}
         availableTerminalHeight={availableTerminalHeight}
         terminalWidth={terminalWidth}
       />
     )}
-    {item.type === 'info' && <InfoMessage text={item.text} />}
-    {item.type === 'error' && <ErrorMessage text={item.text} />}
+    {item.type === 'info' && <InfoMessage text={getTextFromParts(item.text)} />}
+    {item.type === 'error' && <ErrorMessage text={getTextFromParts(item.text)} />}
     {item.type === 'about' && (
       <AboutBox
         cliVersion={item.cliVersion}
@@ -93,4 +123,5 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
       <CompressionMessage compression={item.compression} />
     )}
   </Box>
-);
+  );
+};

@@ -48,7 +48,7 @@ export function EditorSettingsDialog({
     editorSettingsManager.getAvailableEditorDisplays();
 
   const currentPreference =
-    settings.forScope(selectedScope).settings.preferredEditor;
+    config.get('editor.type') as EditorType | undefined; // Removed scope
   let editorIndex = currentPreference
     ? editorItems.findIndex(
         (item: EditorDisplay) => item.type === currentPreference,
@@ -82,20 +82,23 @@ export function EditorSettingsDialog({
     selectedScope === SettingScope.User
       ? SettingScope.Workspace
       : SettingScope.User;
-  if (settings.forScope(otherScope).settings.preferredEditor !== undefined) {
-    otherScopeModifiedMessage =
-      settings.forScope(selectedScope).settings.preferredEditor !== undefined
-        ? `(Also modified in ${otherScope})`
-        : `(Modified in ${otherScope})`;
-  }
+  // TODO: Revisit this logic if scope-specific values can be read from Config.
+  // if (config.get('editor.type', otherScope) !== undefined) {
+  //   otherScopeModifiedMessage =
+  //     config.get('editor.type', selectedScope) !== undefined
+  //       ? `(Also modified in ${otherScope})`
+  //       : `(Modified in ${otherScope})`;
+  // }
+  // const otherScopeModifiedMessage = ''; // Simplified - initial let is enough
 
   let mergedEditorName = 'None';
+  const mergedPreferredEditor = config.get('editor.type') as EditorType | undefined;
   if (
-    settings.merged.preferredEditor &&
-    isEditorAvailable(settings.merged.preferredEditor)
+    mergedPreferredEditor &&
+    isEditorAvailable(mergedPreferredEditor)
   ) {
     mergedEditorName =
-      EDITOR_DISPLAY_NAMES[settings.merged.preferredEditor as EditorType];
+      EDITOR_DISPLAY_NAMES[mergedPreferredEditor];
   }
 
   return (

@@ -21,7 +21,7 @@ import { Part, PartListUnion } from '@google/genai';
 import { UseHistoryManagerReturn } from './useHistoryManager.js';
 import { HistoryItem, MessageType, StreamingState } from '../types.js';
 import { Dispatch, SetStateAction } from 'react';
-import { LoadedSettings } from '../../config/config.js';
+// import { LoadedSettings } from '../../config/config.js'; // Removed
 
 // --- MOCKS ---
 const mockSendMessageStream = vi
@@ -323,14 +323,14 @@ describe('useGeminiStream', () => {
       .mockReturnValue((async function* () {})());
   });
 
-  const mockLoadedSettings: LoadedSettings = {
-    merged: { preferredEditor: 'vscode' },
-    user: { path: '/user/settings.json', settings: {} },
-    workspace: { path: '/workspace/.gemini/settings.json', settings: {} },
-    errors: [],
-    forScope: vi.fn(),
-    setValue: vi.fn(),
-  } as unknown as LoadedSettings;
+  // const mockLoadedSettings: LoadedSettings = { // Removed
+  //   merged: { preferredEditor: 'vscode' },
+  //   user: { path: '/user/settings.json', settings: {} },
+  //   workspace: { path: '/workspace/.gemini/settings.json', settings: {} },
+  //   errors: [],
+  //   forScope: vi.fn(),
+  //   setValue: vi.fn(),
+  // } as unknown as LoadedSettings;
 
   const renderTestHook = (
     initialToolCalls: TrackedToolCall[] = [],
@@ -365,7 +365,7 @@ describe('useGeminiStream', () => {
           | boolean
         >;
         shellModeActive: boolean;
-        loadedSettings: LoadedSettings;
+        // loadedSettings: LoadedSettings; // Removed
         toolCalls?: TrackedToolCall[]; // Allow passing updated toolCalls
       }) => {
         // Update the mock's return value if new toolCalls are passed in props
@@ -401,7 +401,7 @@ describe('useGeminiStream', () => {
             | boolean
           >,
           shellModeActive: false,
-          loadedSettings: mockLoadedSettings,
+          // loadedSettings: mockLoadedSettings, // Removed
           toolCalls: initialToolCalls,
         },
       },

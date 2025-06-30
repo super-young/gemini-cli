@@ -47,7 +47,8 @@ export const useEditorSettings = (
       }
 
       try {
-        loadedSettings.setValue(scope, 'preferredEditor', editorType);
+        config.set('editor.type', editorType); // Use config.set, scope is not directly used here
+        // TODO: Re-evaluate how scope (User/Workspace) is handled with config.set
         addItem(
           {
             type: MessageType.INFO,
@@ -61,7 +62,7 @@ export const useEditorSettings = (
         setEditorError(`Failed to set editor preference: ${error}`);
       }
     },
-    [loadedSettings, setEditorError, addItem],
+    [config, setEditorError, addItem], // Changed loadedSettings to config
   );
 
   const exitEditorDialog = useCallback(() => {
