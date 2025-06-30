@@ -13,7 +13,7 @@ import {
   type EditorDisplay,
 } from '../editors/editorSettingsManager.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
-// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+// import { LoadedSettings, SettingScope } from '../../config/config.js'; // REMOVED
 import { EditorType, isEditorAvailable, type Config } from '@super-young/gemini-cli-core'; // Config ADDED & SCOPE CHANGED
 import { SettingScope } from '../types.js'; // CORRECTED Path
 

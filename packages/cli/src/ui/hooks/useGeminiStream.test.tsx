@@ -21,7 +21,7 @@ import { Part, PartListUnion } from '@google/genai';
 import { UseHistoryManagerReturn } from './useHistoryManager.js';
 import { HistoryItem, MessageType, StreamingState } from '../types.js';
 import { Dispatch, SetStateAction } from 'react';
-import { LoadedSettings } from '../../config/settings.js';
+import { LoadedSettings } from '../../config/config.js';
 
 // --- MOCKS ---
 const mockSendMessageStream = vi

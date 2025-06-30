@@ -22,7 +22,7 @@ vi.mock('os', () => ({
   platform: () => 'linux',
   tmpdir: () => '/tmp',
 }));
-vi.mock('@google/gemini-cli-core');
+vi.mock('@super-young/gemini-cli-core');
 vi.mock('../utils/textUtils.js', () => ({
   isBinary: vi.fn(),
 }));

@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { Colors } from '../colors.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
-// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+// import { LoadedSettings, SettingScope } from '../../config/config.js'; // REMOVED
 import { AuthType, type Config } from '@super-young/gemini-cli-core'; // Config ADDED & SCOPE CHANGED
 import { validateAuthMethod } from '../../config/auth.js';
 import { SettingScope } from '../types.js'; // CORRECTED Path
@@ -40,7 +40,7 @@ export function AuthDialog({
   ];
 
   let initialAuthIndex = items.findIndex(
-    (item) => item.value === settings.merged.selectedAuthType,
+    (item) => item.value === config.merged.selectedAuthType,
   );
 
   if (initialAuthIndex === -1) {
@@ -59,7 +59,7 @@ export function AuthDialog({
 
   useInput((_input, key) => {
     if (key.escape) {
-      if (settings.merged.selectedAuthType === undefined) {
+      if (config.merged.selectedAuthType === undefined) {
         // Prevent exiting if no auth method is set
         setErrorMessage(
           'You must select an auth method to proceed. Press Ctrl+C twice to exit.',

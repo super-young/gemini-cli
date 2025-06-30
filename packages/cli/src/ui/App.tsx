@@ -35,11 +35,10 @@ import { Footer } from './components/Footer.js';
 import { ThemeDialog } from './components/ThemeDialog.js';
 import { AuthDialog } from './components/AuthDialog.js';
 import { AuthInProgress } from './components/AuthInProgress.js';
-import { EditorSettingsDialog }.js';
+import { EditorSettingsDialog } from './components/EditorSettingsDialog.js';
 import { Colors } from './colors.js';
 import { Help } from './components/Help.js';
 import { loadHierarchicalGeminiMemory } from '../config/config.js';
-// import { LoadedSettings } from '../config/settings.js'; // REMOVED - old settings system
 import { Tips } from './components/Tips.js';
 import { useConsolePatcher } from './components/ConsolePatcher.js';
 import { DetailedMessagesDisplay } from './components/DetailedMessagesDisplay.js';
@@ -75,13 +74,9 @@ import { PrivacyNotice } from './privacy/PrivacyNotice.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 
-// TODO: AppProps will need to be updated based on what gemini.tsx passes,
-// especially after removing `settings`. It might receive `mergedConfigSubset`.
 interface AppProps {
   config: Config;
-  // settings: LoadedSettings; // REMOVED - old settings system
   startupWarnings?: string[];
-  mergedConfigSubset?: MergedConfigSubset; // Will be added if gemini.tsx passes it
 }
 
 export const AppWrapper = (props: AppProps) => (
@@ -92,7 +87,7 @@ export const AppWrapper = (props: AppProps) => (
 
 // TODO: Update destructuring and usage of `settings` once AppProps is finalized.
 // For now, many parts will try to use `config.getSomeSetting()` which might not exist.
-const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
+const App = ({ config, startupWarnings = [] }: AppProps) => {
   useBracketedPaste();
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const { stdout } = useStdout();
@@ -152,7 +147,7 @@ const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
     openThemeDialog,
     handleThemeSelect,
     handleThemeHighlight,
-  } = useThemeCommand(config, setThemeError, addItem); // Changed settings to config
+  } = useThemeCommand(config, setThemeError, addItem);
 
   const {
     isAuthDialogOpen,
@@ -161,11 +156,10 @@ const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
     handleAuthHighlight,
     isAuthenticating,
     cancelAuthentication,
-  } = useAuthCommand(config, setAuthError, config); // Changed settings to config
+  } = useAuthCommand(config, setAuthError);
 
   useEffect(() => {
-    // TODO: Replace with config.getSelectedAuthType() or similar from mergedConfigSubset
-    const selectedAuthType = (config as any).selectedAuthType || config.getAuthType?.();
+    const selectedAuthType = config.get('auth.type');
     if (selectedAuthType) {
       const error = validateAuthMethod(selectedAuthType);
       if (error) {
@@ -173,14 +167,14 @@ const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
         openAuthDialog();
       }
     }
-  }, [config, openAuthDialog, setAuthError]); // config instead of settings.merged.selectedAuthType
+  }, [config, openAuthDialog, setAuthError]);
 
   const {
     isEditorDialogOpen,
     openEditorDialog,
     handleEditorSelect,
     exitEditorDialog,
-  } = useEditorSettings(config, setEditorError, addItem); // Changed settings to config
+  } = useEditorSettings(config, setEditorError, addItem);
 
   const toggleCorgiMode = useCallback(() => {
     setCorgiMode((prev) => !prev);
@@ -395,29 +389,28 @@ const App = ({ config, /* settings, */ startupWarnings = [] }: AppProps) => {
   }, [config]);
 
   const getPreferredEditor = useCallback(() => {
-    // TODO: Replace with config.getPreferredEditor() or similar from mergedConfigSubset
-    const editorType = (config as any).preferredEditor;
+    const editorType = config.get('editor.type');
     const isValidEditor = isEditorAvailable(editorType);
     if (!isValidEditor) {
       openEditorDialog();
       return;
     }
     return editorType as EditorType;
-  }, [config, openEditorDialog]); // config instead of settings
+  }, [config, openEditorDialog]);
 
   const onAuthError = useCallback(() => {
     setAuthError('reauth required');
     openAuthDialog();
   }, [openAuthDialog, setAuthError]);
 
-  const [contentGenerator, setContentGenerator] = useState<import('@google/gemini-cli-core').LLMServiceContentGenerator | null>(null);
+  const [contentGenerator, setContentGenerator] = useState<import('@super-young/gemini-cli-core').LLMServiceContentGenerator | null>(null);
   const [contentGeneratorError, setContentGeneratorError] = useState<string | null>(null);
 
   useEffect(() => {
     if (config) {
       try {
         // LLMServiceContentGenerator is synchronous and throws errors if factory fails
-        const generator = new (require('@google/gemini-cli-core').LLMServiceContentGenerator)(config);
+        const generator = new (require('@super-young/gemini-cli-core').LLMServiceContentGenerator)(config);
         setContentGenerator(generator);
         setContentGeneratorError(null);
         if (config.getDebugMode()) {

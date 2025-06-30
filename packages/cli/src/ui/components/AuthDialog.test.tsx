@@ -7,7 +7,7 @@
 import { render } from 'ink-testing-library';
 import { describe, it, expect, vi } from 'vitest';
 import { AuthDialog } from './AuthDialog.js';
-// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+// import { LoadedSettings, SettingScope } from '../../config/config.js'; // REMOVED
 import { AuthType, Config } from '@super-young/gemini-cli-core';
 
 describe('AuthDialog', () => {

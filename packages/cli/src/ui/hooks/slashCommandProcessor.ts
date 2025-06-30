@@ -32,7 +32,7 @@ import { createShowMemoryAction } from './useShowMemoryCommand.js';
 import { GIT_COMMIT_INFO } from '../../generated/git-commit.js';
 import { formatDuration, formatMemoryUsage } from '../utils/formatters.js';
 import { getCliVersion } from '../../utils/version.js';
-import { LoadedSettings } from '../../config/settings.js';
+import { LoadedSettings } from '../../config/config.js';
 
 export interface SlashCommandActionReturn {
   shouldScheduleTool?: boolean;

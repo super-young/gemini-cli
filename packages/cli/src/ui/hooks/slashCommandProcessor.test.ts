@@ -70,7 +70,7 @@ import {
   GeminiClient,
 } from '@super-young/gemini-cli-core';
 import { useSessionStats } from '../contexts/SessionContext.js';
-import { LoadedSettings } from '../../config/settings.js';
+import { LoadedSettings } from '../../config/config.js';
 import * as ShowMemoryCommandModule from './useShowMemoryCommand.js';
 import { GIT_COMMIT_INFO } from '../../generated/git-commit.js';
 

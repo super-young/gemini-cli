@@ -7,8 +7,8 @@
 import * as path from 'node:path';
 import process from 'node:process';
 import {
-  AuthType,
-  ContentGeneratorConfig,
+  // AuthType, // Commented out since unused
+  // ContentGeneratorConfig, // Commented out since unused
   // createContentGeneratorConfig, // This function was removed/commented out
 } from '../core/contentGenerator.js';
 import { ToolRegistry } from '../tools/tool-registry.js';
@@ -170,14 +170,15 @@ export class Config {
   private readonly proxy: string | undefined;
   private readonly cwd: string;
   private readonly bugCommand: BugCommandSettings | undefined;
-  private model: string; // Made mutable for setModel/resetModelToDefault
+  private _model: string; // Made mutable for setModel/resetModelToDefault
   private readonly initialModel: string; // Store the initial model
   private readonly extensionContextFilePaths: string[];
   private modelSwitchedDuringSession: boolean = false;
-  public readonly llmProvider: LLMProvider; // Made public for factory access
-  public readonly openRouterApiKey?: string; // Made public for factory access
-  public readonly generationConfig?: GenerationConfig; // Made public for GeminiLLMService
+  readonly llmProvider: LLMProvider; // Removed public modifier
+  readonly openRouterApiKey?: string; // Removed public modifier
+  readonly generationConfig?: GenerationConfig; // Removed public modifier
   flashFallbackHandler?: FlashFallbackHandler;
+  private settings: Record<string, unknown> = {}; // Changed any to unknown
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -220,7 +221,7 @@ export class Config {
     this.cwd = params.cwd ?? process.cwd();
     this.fileDiscoveryService = params.fileDiscoveryService ?? null;
     this.bugCommand = params.bugCommand;
-    this.model = params.model;
+    this._model = params.model;
     this.initialModel = params.model; // Store initial model
     this.extensionContextFilePaths = params.extensionContextFilePaths ?? [];
 
@@ -254,14 +255,14 @@ export class Config {
   // }
 
   getModel(): string {
-    return this.model;
+    return this._model;
   }
 
   setModel(newModel: string): void {
     // TODO: This needs to potentially reconfigure/recreate the LLMService.
     // For now, this method doesn't change the actual model used by an active LLMService.
     // It only updates the config's 'default' model and flags that a switch was attempted.
-    this.model = newModel; // Actually update the model
+    this._model = newModel; // Actually update the model
     console.warn(
       `Config.setModel() called with ${newModel}. The base model for new LLMService instances may change, but existing services are not affected. Model switching logic needs review.`
     );
@@ -277,7 +278,7 @@ export class Config {
     // If LLMService instances are immutable regarding their model, this might only affect
     // the 'default' model stored in Config for future service instantiations.
     // For now, just reset the flag and model to its initial state.
-    this.model = this.initialModel;
+    this._model = this.initialModel;
     this.modelSwitchedDuringSession = false;
   }
 
@@ -446,6 +447,41 @@ export class Config {
     }
     return this.gitService;
   }
+
+  // private settings: Record<string, unknown> = {}; // Removed duplicate declaration
+
+  get(key: string): unknown {
+    return this.settings[key];
+  }
+
+  set(key: string, value: unknown): void {
+    this.settings[key] = value;
+  }
+
+  refreshAuth(): Promise<void> {
+    // TODO: Implement actual authentication refresh logic
+    console.warn('Config.refreshAuth() is not implemented yet');
+    return Promise.resolve();
+  }
+}
+
+export function createConfig(): { config: Config; yamlConfig: Partial<Config> & Record<string, unknown> } {
+  // TODO: Implement actual config loading logic
+  const config = new Config({
+    targetDir: process.cwd(),
+    sessionId: 'default-session',
+    debugMode: false,
+    cwd: process.cwd(),
+    model: DEFAULT_GEMINI_FLASH_MODEL
+  });
+  return {
+    config,
+    yamlConfig: {
+      // Simulate loaded YAML config
+      model: DEFAULT_GEMINI_FLASH_MODEL,
+      approvalMode: ApprovalMode.DEFAULT
+    }
+  };
 }
 
 export function createToolRegistry(config: Config): Promise<ToolRegistry> {

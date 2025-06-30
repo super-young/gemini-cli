@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback } from 'react';
-// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
+// import { LoadedSettings, SettingScope } from '../../config/config.js'; // REMOVED
 import { type HistoryItem, MessageType, SettingScope } from '../types.js'; // SettingScope ADDED
 import {
   allowEditorTypeInSandbox,

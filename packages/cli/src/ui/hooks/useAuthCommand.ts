@@ -5,27 +5,18 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
-import {
-  AuthType,
-  Config,
-  clearCachedCredentialFile,
-  getErrorMessage,
-} from '@super-young/gemini-cli-core';
+import { AuthType, Config, clearCachedCredentialFile, getErrorMessage } from '@super-young/gemini-cli-core';
 
 async function performAuthFlow(authMethod: AuthType, config: Config) {
-  await config.refreshAuth(authMethod);
+  await config.refreshAuth();
   console.log(`Authenticated via "${authMethod}".`);
 }
 
 export const useAuthCommand = (
-  settings: LoadedSettings,
   setAuthError: (error: string | null) => void,
   config: Config,
 ) => {
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(
-    settings.merged.selectedAuthType === undefined,
-  );
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
 
   const openAuthDialog = useCallback(() => {
     setIsAuthDialogOpen(true);
@@ -35,14 +26,14 @@ export const useAuthCommand = (
 
   useEffect(() => {
     const authFlow = async () => {
-      if (isAuthDialogOpen || !settings.merged.selectedAuthType) {
+      if (isAuthDialogOpen || !config.get('auth.type')) {
         return;
       }
 
       try {
         setIsAuthenticating(true);
         await performAuthFlow(
-          settings.merged.selectedAuthType as AuthType,
+          config.get('auth.type') as AuthType,
           config,
         );
       } catch (e) {
@@ -57,15 +48,20 @@ export const useAuthCommand = (
   }, [isAuthDialogOpen, settings, config, setAuthError, openAuthDialog]);
 
   const handleAuthSelect = useCallback(
-    async (authMethod: string | undefined, scope: SettingScope) => {
+    async (authMethod: string | undefined) => {
       if (authMethod) {
         await clearCachedCredentialFile();
-        settings.setValue(scope, 'selectedAuthType', authMethod);
+        config.set('auth.type', authMethod);
+        try {
+          await config.refreshAuth();
+          setAuthError(null);
+        } catch (error) {
+          setAuthError(`Authentication failed: ${getErrorMessage(error)}`);
+        }
       }
       setIsAuthDialogOpen(false);
-      setAuthError(null);
     },
-    [settings, setAuthError],
+    [config, setAuthError],
   );
 
   const handleAuthHighlight = useCallback((_authMethod: string | undefined) => {

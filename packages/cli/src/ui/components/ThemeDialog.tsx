@@ -5,15 +5,14 @@
  */
 
 import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, type Key } from 'ink';
 import { Colors } from '../colors.js';
 import { themeManager, DEFAULT_THEME } from '../themes/theme-manager.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
 import { DiffRenderer } from './messages/DiffRenderer.js';
 import { colorizeCode } from '../utils/CodeColorizer.js';
-// import { LoadedSettings, SettingScope } from '../../config/settings.js'; // REMOVED
-import { type Config } from '@super-young/gemini-cli-core'; // ADDED & SCOPE CHANGED
-import { SettingScope } from '../types.js'; // CORRECTED Path
+import { type Config } from '@super-young/gemini-cli-core';
+import { SettingScope } from '../types.js';
 
 interface ThemeDialogProps {
   /** Callback function when a theme is selected */
@@ -54,7 +53,7 @@ export function ThemeDialog({
   // Determine which radio button should be initially selected in the theme list
   // This should reflect the theme *saved* for the selected scope, or the default
   const initialThemeIndex = themeItems.findIndex(
-    (item) => item.value === (settings.merged.theme || DEFAULT_THEME.name),
+    (item) => item.value === (config.get('theme') || DEFAULT_THEME.name),
   );
 
   const scopeItems = [
@@ -80,9 +79,9 @@ export function ThemeDialog({
     'theme',
   );
 
-  useInput((input, key) => {
+  useInput((input: string, key: Key) => {
     if (key.tab) {
-      setFocusedSection((prev) => (prev === 'theme' ? 'scope' : 'theme'));
+      setFocusedSection((prev: 'theme' | 'scope') => (prev === 'theme' ? 'scope' : 'theme'));
     }
     if (key.escape) {
       onSelect(undefined, selectedScope);
@@ -94,9 +93,9 @@ export function ThemeDialog({
     selectedScope === SettingScope.User
       ? SettingScope.Workspace
       : SettingScope.User;
-  if (settings.forScope(otherScope).settings.theme !== undefined) {
+  if (config.getForScope(otherScope, 'theme') !== undefined) {
     otherScopeModifiedMessage =
-      settings.forScope(selectedScope).settings.theme !== undefined
+      config.getForScope(selectedScope, 'theme') !== undefined
         ? `(Also modified in ${otherScope})`
         : `(Modified in ${otherScope})`;
   }
